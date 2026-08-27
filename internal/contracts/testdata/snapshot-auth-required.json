@@ -1,0 +1,33 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-08-25T18:40:00Z",
+  "providers": [
+    {
+      "provider": "copilot",
+      "state": "auth_required",
+      "observed_at": "2026-08-25T18:39:40Z",
+      "received_at": "2026-08-25T18:39:47Z",
+      "source": {
+        "name": "copilot_sdk",
+        "command_path": "/home/kris/.nvm/versions/node/v24.18.0/lib/node_modules/@github/copilot/npm-loader.js",
+        "command_version": "1.0.80",
+        "selection": "path",
+        "sdk_version": "1.0.11",
+        "runtime_version": "1.0.80",
+        "package_version": "1.0.80"
+      },
+      "freshness": {
+        "state": "expired",
+        "max_age_seconds": 900
+      },
+      "completeness": "partial",
+      "error": {
+        "code": "not_authenticated",
+        "phase": "authenticate",
+        "message": "The selected Copilot CLI reported no authenticated account.",
+        "recovery_hint": "Sign in with the selected native Copilot CLI under the service user.",
+        "observed_at": "2026-08-25T18:39:47Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-08-24T20:00:00Z",
+  "providers": [
+    {
+      "provider": "claude",
+      "state": "lower_bound",
+      "observed_at": "2026-08-24T19:59:00Z",
+      "received_at": "2026-08-24T19:59:01Z",
+      "source": {
+        "name": "claude_status_line",
+        "command_path": "/usr/local/bin/claude",
+        "command_version": "1.0.90",
+        "selection": "path",
+        "response_profile": "claude_status_line_1_0_90",
+        "profile_preferred_from": "1.0.90"
+      },
+      "freshness": {
+        "state": "current",
+        "max_age_seconds": 300
+      },
+      "completeness": "lower_bound",
+      "account": {
+        "label": "fixture-claude-account"
+      },
+      "plan": "max",
+      "meters": [
+        {
+          "id": "five_hour",
+          "label": "Five-hour window",
+          "kind": "rolling_window",
+          "used_percentage": 10,
+          "window": {
+            "resets_at": "2026-08-24T22:00:00Z"
+          }
+        },
+        {
+          "id": "seven_day",
+          "label": "Seven-day window",
+          "kind": "rolling_window",
+          "used_percentage": 50,
+          "window": {
+            "resets_at": "2026-08-31T09:00:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "provider": "codex",
+      "state": "healthy",
+      "observed_at": "2026-08-24T19:59:10Z",
+      "received_at": "2026-08-24T19:59:11Z",
+      "source": {
+        "name": "codex_app_server",
+        "command_path": "/usr/local/bin/codex",
+        "command_version": "0.149.1",
+        "selection": "path",
+        "protocol_version": "generated-schema",
+        "response_profile": "codex_rate_limits_0_149_1",
+        "profile_preferred_from": "0.149.1"
+      },
+      "freshness": {
+        "state": "current",
+        "max_age_seconds": 300
+      },
+      "completeness": "exact",
+      "account": {
+        "label": "fixture-codex-account",
+        "auth_type": "chatgpt"
+      },
+      "plan": "plus",
+      "meters": [
+        {
+          "id": "primary",
+          "label": "Primary window",
+          "kind": "rolling_window",
+          "used_percentage": 14,
+          "window": {
+            "duration_seconds": 604800,
+            "resets_at": "2026-08-31T09:06:05Z"
+          }
+        }
+      ]
+    },
+    {
+      "provider": "copilot",
+      "state": "partial",
+      "observed_at": "2026-08-24T19:59:30.600Z",
+      "received_at": "2026-08-24T19:59:31Z",
+      "source": {
+        "name": "copilot_sdk",
+        "command_path": "C:/nvm4w/nodejs/node_modules/@github/copilot/npm-loader.js",
+        "command_version": "1.0.78",
+        "selection": "powershell",
+        "adapter_version": "0.1.0",
+        "sdk_version": "1.0.11",
+        "runtime_version": "1.0.78",
+        "package_version": "1.0.34",
+        "response_profile": "copilot_quota_1_0_78",
+        "profile_preferred_from": "1.0.78"
+      },
+      "freshness": {
+        "state": "current",
+        "max_age_seconds": 900
+      },
+      "completeness": "partial",
+      "account": {
+        "label": "fixture-copilot-account",
+        "auth_type": "user",
+        "host": "github.com"
+      },
+      "meters": [
+        {
+          "id": "chat",
+          "label": "Chat",
+          "kind": "quota",
+          "used": 0,
+          "entitlement": 0,
+          "remaining_percentage": 100,
+          "unlimited": true,
+          "has_quota": true,
+          "token_based_billing": true,
+          "usage_allowed_when_exhausted": false,
+          "overage_allowed_when_exhausted": false,
+          "overage": {
+            "entitlement": 0,
+            "used": 0
+          },
+          "window": {
+            "raw_reset_at": "2026-08-24T19:59:30.554Z"
+          }
+        },
+        {
+          "id": "completions",
+          "label": "Completions",
+          "kind": "quota",
+          "used": 0,
+          "entitlement": 0,
+          "remaining_percentage": 100,
+          "unlimited": true,
+          "has_quota": true,
+          "token_based_billing": true,
+          "usage_allowed_when_exhausted": false,
+          "overage_allowed_when_exhausted": false,
+          "overage": {
+            "entitlement": 0,
+            "used": 0
+          },
+          "window": {
+            "raw_reset_at": "2026-08-24T19:59:30.554Z"
+          }
+        },
+        {
+          "id": "premium_interactions",
+          "label": "Premium interactions",
+          "kind": "quota",
+          "used": 2000,
+          "entitlement": 2000,
+          "remaining_percentage": 0,
+          "unlimited": false,
+          "has_quota": false,
+          "token_based_billing": true,
+          "usage_allowed_when_exhausted": false,
+          "overage_allowed_when_exhausted": false,
+          "overage": {
+            "entitlement": 0,
+            "used": 0
+          },
+          "window": {
+            "raw_reset_at": "2026-08-24T19:59:30.554Z"
+          }
+        }
+      ],
+      "issues": [
+        {
+          "code": "reset_time_not_future",
+          "meter_id": "chat",
+          "field": "window.resets_at",
+          "message": "The provider reset time was not later than the observation time."
+        },
+        {
+          "code": "reset_time_not_future",
+          "meter_id": "completions",
+          "field": "window.resets_at",
+          "message": "The provider reset time was not later than the observation time."
+        },
+        {
+          "code": "reset_time_not_future",
+          "meter_id": "premium_interactions",
+          "field": "window.resets_at",
+          "message": "The provider reset time was not later than the observation time."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "schema_version": "1",
+  "observed_at": "2026-08-24T20:00:00Z",
+  "live": true,
+  "ready": true,
+  "service": {
+    "component": "service",
+    "state": "degraded",
+    "version": "0.1.0",
+    "started_at": "2026-08-24T19:55:00Z",
+    "checks": [
+      {
+        "name": "snapshot_schema",
+        "state": "pass",
+        "checked_at": "2026-08-24T20:00:00Z"
+      },
+      {
+        "name": "provider_summary",
+        "state": "warning",
+        "checked_at": "2026-08-24T20:00:00Z",
+        "code": "provider_partial",
+        "message": "Copilot returned quota with no valid future reset time."
+      }
+    ]
+  },
+  "providers": [
+    {
+      "provider": "claude",
+      "state": "lower_bound",
+      "operational_state": "degraded",
+      "checked_at": "2026-08-24T19:59:01Z",
+      "source": {
+        "name": "claude_status_line",
+        "command_path": "/usr/local/bin/claude",
+        "command_version": "1.0.90"
+      },
+      "last_successful_read_at": "2026-08-24T19:59:00Z",
+      "checks": [
+        {
+          "name": "status_line",
+          "state": "pass",
+          "checked_at": "2026-08-24T19:59:01Z"
+        }
+      ]
+    },
+    {
+      "provider": "codex",
+      "state": "healthy",
+      "operational_state": "healthy",
+      "checked_at": "2026-08-24T19:59:11Z",
+      "source": {
+        "name": "codex_app_server",
+        "command_path": "/usr/local/bin/codex",
+        "command_version": "0.149.1"
+      },
+      "last_successful_read_at": "2026-08-24T19:59:10Z",
+      "checks": [
+        {
+          "name": "rate_limits_read",
+          "state": "pass",
+          "checked_at": "2026-08-24T19:59:11Z",
+          "duration_ms": 120.5
+        }
+      ]
+    },
+    {
+      "provider": "copilot",
+      "state": "partial",
+      "operational_state": "degraded",
+      "checked_at": "2026-08-24T19:59:31Z",
+      "source": {
+        "name": "copilot_sdk",
+        "command_path": "C:/nvm4w/nodejs/node_modules/@github/copilot/npm-loader.js",
+        "command_version": "1.0.78",
+        "sdk_version": "1.0.11",
+        "runtime_version": "1.0.78",
+        "package_version": "1.0.34"
+      },
+      "last_successful_read_at": "2026-08-24T19:59:30.600Z",
+      "checks": [
+        {
+          "name": "account_get_quota",
+          "state": "pass",
+          "checked_at": "2026-08-24T19:59:31Z",
+          "duration_ms": 803.053
+        },
+        {
+          "name": "reset_time",
+          "state": "warning",
+          "checked_at": "2026-08-24T19:59:31Z",
+          "code": "invalid_reset_time",
+          "message": "Provider reset time was not later than the observation time."
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component": "tray",
+      "state": "not_installed"
+    },
+    {
+      "component": "wake_helper",
+      "state": "disabled"
+    },
+    {
+      "component": "mcp_bridge",
+      "state": "healthy",
+      "version": "0.1.0"
+    }
+  ]
+}
