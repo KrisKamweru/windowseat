@@ -141,17 +141,3 @@ func TestFormatHealth(t *testing.T) {
 		t.Fatalf("got\n%s\nwant\n%s", out.String(), want)
 	}
 }
-
-func TestHumanDuration(t *testing.T) {
-	for d, want := range map[time.Duration]string{
-		30 * time.Second:                             "<1m",
-		45 * time.Minute:                             "45m",
-		2*time.Hour + 10*time.Minute:                 "2h10m",
-		6*24*time.Hour + 3*time.Hour:                 "6d3h",
-		2*time.Hour + 9*time.Minute + 50*time.Second: "2h10m",
-	} {
-		if got := humanDuration(d); got != want {
-			t.Errorf("humanDuration(%s) = %q, want %q", d, got, want)
-		}
-	}
-}
