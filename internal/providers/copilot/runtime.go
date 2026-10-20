@@ -69,7 +69,6 @@ type runtime struct {
 // passed through untouched.
 func startRuntime(ctx context.Context, path string) (*runtime, error) {
 	process := exec.CommandContext(ctx, path, runtimeArgs...)
-	command.KillTreeOnCancel(process)
 	process.WaitDelay = stopGracePeriod
 	stdin, err := process.StdinPipe()
 	if err != nil {
@@ -79,7 +78,7 @@ func startRuntime(ctx context.Context, path string) (*runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := process.Start(); err != nil {
+	if err := command.StartTree(process); err != nil {
 		return nil, err
 	}
 

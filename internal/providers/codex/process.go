@@ -22,7 +22,6 @@ func runAppServer(ctx context.Context, path string) (json.RawMessage, error) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, path, "-s", "read-only", "-a", "never", "app-server")
-	command.KillTreeOnCancel(cmd)
 	cmd.WaitDelay = stopGrace
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -32,7 +31,7 @@ func runAppServer(ctx context.Context, path string) (json.RawMessage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errStart, err)
 	}
-	if err := cmd.Start(); err != nil {
+	if err := command.StartTree(cmd); err != nil {
 		return nil, fmt.Errorf("%w: %w", errStart, err)
 	}
 

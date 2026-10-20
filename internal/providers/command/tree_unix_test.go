@@ -18,12 +18,11 @@ func TestCancelKillsTheWholeProcessTree(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", "-c", "sleep 30 & echo $!; wait")
-	KillTreeOnCancel(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := cmd.Start(); err != nil {
+	if err := StartTree(cmd); err != nil {
 		t.Fatal(err)
 	}
 	line, err := bufio.NewReader(stdout).ReadString('\n')

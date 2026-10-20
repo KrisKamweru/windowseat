@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -28,13 +29,18 @@ var nestedSessionMarkers = []string{"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"}
 const waitAfterCancel = 5 * time.Second
 
 func runUsageCommand(ctx context.Context, commandPath string) ([]byte, error) {
+	var stdout bytes.Buffer
 	cmd := exec.CommandContext(ctx, commandPath, usageArgs...)
-	command.KillTreeOnCancel(cmd)
 	cmd.Dir = os.TempDir()
 	cmd.Env = childEnvironment(os.Environ())
+	cmd.Stdout = &stdout
 	cmd.Stderr = io.Discard
 	cmd.WaitDelay = waitAfterCancel
-	return cmd.Output()
+	if err := command.StartTree(cmd); err != nil {
+		return nil, err
+	}
+	err := cmd.Wait()
+	return stdout.Bytes(), err
 }
 
 // childEnvironment passes the ambient environment through untouched except
