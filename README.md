@@ -47,6 +47,36 @@ scripts/build.sh darwin/arm64       # any GOOS/GOARCH pair
 
 Binaries land in `dist/<os>-<arch>/`. The tray on macOS needs CGO, so build it on a Mac.
 
+## Install
+
+Run `install` from the build output. It copies both binaries into your user's program folder, starts the service and the tray, and sets both to start when you log in. Nothing needs admin rights.
+
+```sh
+dist/linux-amd64/windowseat install             # service and tray
+dist/linux-amd64/windowseat install --no-tray   # service only
+dist/linux-amd64/windowseat install --dry-run   # print the steps, change nothing
+windowseat uninstall                            # undo all of it; also takes --dry-run
+```
+
+Running `install` again upgrades in place. It stops the old copies before it replaces them.
+
+| Platform | Binaries | Starts at login through |
+| --- | --- | --- |
+| Linux | `~/.local/bin` | `systemd --user` unit `windowseat.service`, and an XDG autostart entry for the tray |
+| Windows | `%LOCALAPPDATA%\Programs\Windowseat` | Task Scheduler logon tasks `Windowseat` and `Windowseat Tray` |
+| macOS | `~/Library/Application Support/Windowseat/bin` | LaunchAgents `dev.windowseat.service` and `dev.windowseat.tray` |
+
+On Linux the tray starts right away only if you ran `install` inside a graphical session. Otherwise it starts at your next graphical login. On Windows, `install` leaves your PATH alone and prints the folder to add if you want `windowseat` in a terminal.
+
+`uninstall` also deletes the saved snapshot and the service socket. It never touches Claude, Codex or Copilot files.
+
+To let agents read usage over MCP, register the server with each tool:
+
+```sh
+claude mcp add windowseat -- windowseat mcp
+codex mcp add windowseat -- windowseat mcp
+```
+
 ## License
 
 [MIT](LICENSE)
