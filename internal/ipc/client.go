@@ -12,8 +12,12 @@ import (
 	"windowseat/internal/contracts"
 )
 
-// ErrNotRunning means nothing is listening on the service endpoint.
-var ErrNotRunning = errors.New("windowseat service is not running")
+var (
+	// ErrNotRunning means nothing is listening on the service endpoint.
+	ErrNotRunning = errors.New("windowseat service is not running")
+	// ErrUntrustedEndpoint means another user's process holds the service endpoint.
+	ErrUntrustedEndpoint = errors.New("windowseat endpoint is held by another user")
+)
 
 // Client talks to a running service. It satisfies Monitor.
 type Client struct {
@@ -24,6 +28,9 @@ func NewClient(addr string) *Client {
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			conn, err := dial(ctx, addr)
+			if errors.Is(err, ErrUntrustedEndpoint) {
+				return nil, err
+			}
 			if err != nil {
 				return nil, fmt.Errorf("%w: %w", ErrNotRunning, err)
 			}
