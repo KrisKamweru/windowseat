@@ -17,7 +17,8 @@ import (
 	"windowseat/internal/contracts"
 )
 
-const version = "0.1.0-dev"
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "0.1.0-dev"
 
 const usageText = `usage: windowseat <command> [flags]
 

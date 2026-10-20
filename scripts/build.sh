@@ -6,10 +6,13 @@
 # flagged more often), and Windows builds carry the version, manifest and
 # icon resources from cmd/*/rsrc_windows_*.syso. Never pack with UPX or
 # obfuscate with garble. Sign Windows releases before publishing them.
+#
+# VERSION sets the version windowseat reports, e.g. VERSION=1.2.0.
 set -eu
 
 cd "$(dirname "$0")/.."
 targets="${*:-linux/amd64 windows/amd64 windows/arm64}"
+version="${VERSION:-0.1.0-dev}"
 
 for target in $targets; do
 	os="${target%/*}"
@@ -22,7 +25,7 @@ for target in $targets; do
 		gui="-H=windowsgui"
 	fi
 	mkdir -p "$out"
-	GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -o "$out/windowseat$ext" ./cmd/windowseat
+	GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags="-X main.version=$version" -o "$out/windowseat$ext" ./cmd/windowseat
 	GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath -ldflags="$gui" -o "$out/windowseat-tray$ext" ./cmd/windowseat-tray
 	echo "built $out"
 done
