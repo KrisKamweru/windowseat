@@ -28,6 +28,9 @@ func providerLine(p contracts.ProviderSnapshot, now time.Time) string {
 	if p.Source != nil {
 		parts = append(parts, string(p.Source.Name))
 	}
+	if refusesUsage(p) {
+		parts = append(parts, usageNotAllowed)
+	}
 	if p.State == contracts.ProviderStale || p.Freshness.State != contracts.FreshnessCurrent {
 		parts = append(parts, string(p.Freshness.State))
 	}

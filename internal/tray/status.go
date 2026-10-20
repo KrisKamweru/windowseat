@@ -37,13 +37,17 @@ func Unreachable() Status {
 	return Status{Level: LevelError, Tooltip: title + "\nreconnecting to the service"}
 }
 
+// usageNotAllowed matches the CLI wording for a provider that refuses ordinary usage.
+const usageNotAllowed = "provider reports usage not allowed"
+
 // Summarize picks the icon level and tooltip. A failed provider outranks a
 // warning, a warning outranks out-of-date readings, and only current
-// readings can warn. warnAt is the used percentage that counts as a warning.
+// readings can warn. warnAt is the used percentage that counts as a warning;
+// a provider that reports usage not allowed also warns.
 func Summarize(snapshot contracts.Snapshot, warnAt float64, now time.Time) Status {
 	lines := []string{title}
 	var failed, outdated, warning bool
-	var failures []string
+	var failures, refusals []string
 
 	tightest, tightestShare := contracts.ProviderSnapshot{}, -1.0
 	var tightestMeter contracts.Meter
@@ -55,6 +59,10 @@ func Summarize(snapshot contracts.Snapshot, warnAt float64, now time.Time) Statu
 		}
 		current := p.State != contracts.ProviderStale && p.Freshness.State == contracts.FreshnessCurrent
 		outdated = outdated || !current
+		if refusesUsage(p) {
+			refusals = append(refusals, string(p.Provider)+": "+usageNotAllowed)
+			warning = warning || current
+		}
 		for _, meter := range p.Meters {
 			share, known := usedShare(meter)
 			if !known {
@@ -75,12 +83,17 @@ func Summarize(snapshot contracts.Snapshot, warnAt float64, now time.Time) Statu
 	case len(failures) == 0:
 		lines = append(lines, "no readings yet")
 	}
+	lines = append(lines, refusals...)
 	if outdated {
 		lines = append(lines, "some readings are out of date")
 	}
 	lines = append(lines, failures...)
 
 	return Status{Level: level(failed, warning, outdated), Tooltip: strings.Join(lines, "\n")}
+}
+
+func refusesUsage(p contracts.ProviderSnapshot) bool {
+	return p.UsageAllowed != nil && !*p.UsageAllowed
 }
 
 func level(failed, warning, outdated bool) Level {

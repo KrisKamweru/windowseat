@@ -33,3 +33,14 @@ func TestMenuLines(t *testing.T) {
 		t.Fatalf("got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
+
+func TestMenuLinesShowUsageNotAllowed(t *testing.T) {
+	codex := refusing(reading(contracts.ProviderCodex, contracts.ProviderHealthy, contracts.FreshnessCurrent,
+		contracts.Meter{Label: "Five-hour window", UsedPercentage: ptr(10.0)}))
+
+	got := MenuLines(contracts.Snapshot{Providers: []contracts.ProviderSnapshot{codex}}, now, time.UTC)
+
+	if want := "codex · read 2m ago · provider reports usage not allowed"; got[0] != want {
+		t.Fatalf("got %q, want %q", got[0], want)
+	}
+}

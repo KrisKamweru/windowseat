@@ -18,6 +18,11 @@ func reading(provider contracts.Provider, state contracts.ProviderState, freshne
 	}
 }
 
+func refusing(p contracts.ProviderSnapshot) contracts.ProviderSnapshot {
+	p.UsageAllowed = ptr(false)
+	return p
+}
+
 func usedPercent(label string, v float64) contracts.Meter {
 	return contracts.Meter{Label: label, UsedPercentage: ptr(v)}
 }
@@ -66,6 +71,20 @@ func TestSummarize(t *testing.T) {
 				{Provider: contracts.ProviderCodex, State: contracts.ProviderAuthRequired, Error: &contracts.ProviderError{Message: "not signed in"}},
 			},
 			want: Status{Level: LevelError, Tooltip: "Windowseat\nclaude Current session: 20% used\nread 2m ago\ncodex: not signed in"},
+		},
+		{
+			name: "a provider that refuses usage warns below the threshold",
+			providers: []contracts.ProviderSnapshot{
+				refusing(reading(contracts.ProviderCodex, contracts.ProviderHealthy, contracts.FreshnessCurrent, usedPercent("Five-hour window", 10))),
+			},
+			want: Status{Level: LevelWarning, Tooltip: "Windowseat\ncodex Five-hour window: 10% used\nread 2m ago\ncodex: provider reports usage not allowed"},
+		},
+		{
+			name: "an expired refusal is stale, not a warning",
+			providers: []contracts.ProviderSnapshot{
+				refusing(reading(contracts.ProviderCodex, contracts.ProviderHealthy, contracts.FreshnessExpired, usedPercent("Five-hour window", 10))),
+			},
+			want: Status{Level: LevelStale, Tooltip: "Windowseat\ncodex Five-hour window: 10% used\nread 2m ago\ncodex: provider reports usage not allowed\nsome readings are out of date"},
 		},
 		{
 			name:      "no readings yet",
