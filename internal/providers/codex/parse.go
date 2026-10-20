@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -81,10 +82,17 @@ func parseRateLimits(result json.RawMessage, observedAt time.Time) (reading, err
 			parsed.meters = append(parsed.meters, meter)
 		}
 	}
-	if len(parsed.meters) == 0 {
+	if !slices.ContainsFunc(parsed.meters, hasReading) {
 		return reading{}, errNoUsableMeters
 	}
 	return parsed, nil
+}
+
+// hasReading reports whether a meter carries a value an agent can act on.
+func hasReading(meter contracts.Meter) bool {
+	hasReset := meter.Window != nil && meter.Window.ResetsAt != nil
+	isUnlimited := meter.Unlimited != nil && *meter.Unlimited
+	return meter.UsedPercentage != nil || meter.Remaining != nil || isUnlimited || hasReset
 }
 
 // limits lists the default Codex limit first, then any other limits by ID.

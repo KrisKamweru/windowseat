@@ -175,6 +175,7 @@ func TestParseRejectsResponsesWithoutWindows(t *testing.T) {
 		"not json":     `[`,
 		"null limits":  `{"rateLimits":null}`,
 		"null windows": `{"rateLimits":{"primary":null,"secondary":null}}`,
+		"no readings":  `{"rateLimits":{"primary":{"windowDurationMins":300},"secondary":{"usedPercent":140,"windowDurationMins":10080,"resetsAt":1000}}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := parseRateLimits(json.RawMessage(result), probeTime)
