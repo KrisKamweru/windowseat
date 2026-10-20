@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -16,7 +17,14 @@ import (
 // cmd and every process it started, such as the native runtime an npm loader
 // spawns. Windows also ends the tree when the service exits. A process the
 // child starts in the moment before it joins the job escapes it.
+//
+// The tree runs in a console that is never shown. Without that, a service
+// with no console of its own would open a window for every provider read.
 func StartTree(cmd *exec.Cmd) error {
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	cmd.SysProcAttr.CreationFlags |= windows.CREATE_NO_WINDOW
 	job, err := newKillOnCloseJob()
 	if err != nil {
 		return fmt.Errorf("create job object: %w", err)
