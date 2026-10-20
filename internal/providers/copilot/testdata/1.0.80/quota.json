@@ -1,0 +1,43 @@
+{
+  "quotaSnapshots": {
+    "chat": {
+      "entitlementRequests": 0,
+      "hasQuota": true,
+      "isUnlimitedEntitlement": true,
+      "overage": 0,
+      "overageAllowedWithExhaustedQuota": false,
+      "overageEntitlement": 0,
+      "remainingPercentage": 100,
+      "resetDate": "2026-10-20T12:45:15.895Z",
+      "tokenBasedBilling": true,
+      "usageAllowedWithExhaustedQuota": false,
+      "usedRequests": 0
+    },
+    "completions": {
+      "entitlementRequests": 0,
+      "hasQuota": true,
+      "isUnlimitedEntitlement": true,
+      "overage": 0,
+      "overageAllowedWithExhaustedQuota": false,
+      "overageEntitlement": 0,
+      "remainingPercentage": 100,
+      "resetDate": "2026-10-20T12:45:15.895Z",
+      "tokenBasedBilling": true,
+      "usageAllowedWithExhaustedQuota": false,
+      "usedRequests": 0
+    },
+    "premium_interactions": {
+      "entitlementRequests": 2000,
+      "hasQuota": true,
+      "isUnlimitedEntitlement": false,
+      "overage": 0,
+      "overageAllowedWithExhaustedQuota": true,
+      "overageEntitlement": 0,
+      "remainingPercentage": 8.1,
+      "resetDate": "2026-10-20T12:45:15.895Z",
+      "tokenBasedBilling": true,
+      "usageAllowedWithExhaustedQuota": true,
+      "usedRequests": 1838
+    }
+  }
+}

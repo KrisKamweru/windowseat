@@ -45,10 +45,10 @@ const (
 type SourceName string
 
 const (
-	SourceClaudeStatusLine SourceName = "claude_status_line"
-	SourceClaudePTYUsage   SourceName = "claude_pty_usage"
-	SourceCodexAppServer   SourceName = "codex_app_server"
-	SourceCopilotSDK       SourceName = "copilot_sdk"
+	SourceClaudeStatusLine  SourceName = "claude_status_line"
+	SourceClaudeUsageReport SourceName = "claude_usage_report"
+	SourceCodexAppServer    SourceName = "codex_app_server"
+	SourceCopilotSDK        SourceName = "copilot_sdk"
 )
 
 type MeterKind string
@@ -67,15 +67,18 @@ type Snapshot struct {
 }
 
 type ProviderSnapshot struct {
-	Provider     Provider           `json:"provider"`
-	State        ProviderState      `json:"state"`
-	ObservedAt   time.Time          `json:"observed_at"`
-	ReceivedAt   time.Time          `json:"received_at"`
-	Source       *Source            `json:"source,omitempty"`
-	Freshness    Freshness          `json:"freshness"`
-	Completeness Completeness       `json:"completeness"`
-	Account      *Account           `json:"account,omitempty"`
-	Plan         string             `json:"plan,omitempty"`
+	Provider     Provider      `json:"provider"`
+	State        ProviderState `json:"state"`
+	ObservedAt   time.Time     `json:"observed_at"`
+	ReceivedAt   time.Time     `json:"received_at"`
+	Source       *Source       `json:"source,omitempty"`
+	Freshness    Freshness     `json:"freshness"`
+	Completeness Completeness  `json:"completeness"`
+	Account      *Account      `json:"account,omitempty"`
+	Plan         string        `json:"plan,omitempty"`
+	// UsageAllowed is the provider's own allow or deny answer, when it gives one.
+	// Windowseat never derives it from meter percentages.
+	UsageAllowed *bool              `json:"usage_allowed,omitempty"`
 	Meters       []Meter            `json:"meters,omitempty"`
 	Issues       []ObservationIssue `json:"issues,omitempty"`
 	Error        *ProviderError     `json:"error,omitempty"`
