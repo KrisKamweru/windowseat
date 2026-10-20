@@ -1,0 +1,6 @@
+{
+  "isAuthenticated": true,
+  "authType": "user",
+  "host": "https://github.com",
+  "login": "fixture-copilot-account"
+}
