@@ -2,6 +2,8 @@
 // It only reads the service; it never starts a provider or the service itself.
 package main
 
+//go:generate go run github.com/tc-hib/go-winres@v0.3.3 make --in winres.json --arch amd64,arm64 --out rsrc
+
 import (
 	"context"
 	"flag"
