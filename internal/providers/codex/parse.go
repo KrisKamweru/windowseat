@@ -20,8 +20,9 @@ var errNoUsableMeters = errors.New("rate-limit response has no usable meters")
 // The response also carries accountId and rateLimitResetCredits. They are
 // deliberately not decoded so they cannot reach a snapshot.
 type rateLimitsResult struct {
-	RateLimits          *limitSnapshot           `json:"rateLimits"`
-	RateLimitsByLimitID map[string]limitSnapshot `json:"rateLimitsByLimitId"`
+	OrdinaryUsageAllowed *bool                    `json:"ordinaryUsageAllowed"`
+	RateLimits           *limitSnapshot           `json:"rateLimits"`
+	RateLimitsByLimitID  map[string]limitSnapshot `json:"rateLimitsByLimitId"`
 }
 
 type limitSnapshot struct {
@@ -47,9 +48,10 @@ type credits struct {
 }
 
 type reading struct {
-	plan   string
-	meters []contracts.Meter
-	issues []contracts.ObservationIssue
+	plan         string
+	usageAllowed *bool
+	meters       []contracts.Meter
+	issues       []contracts.ObservationIssue
 }
 
 // parseRateLimits maps an account/rateLimits/read result to meters. Fields
@@ -65,7 +67,7 @@ func parseRateLimits(result json.RawMessage, observedAt time.Time) (reading, err
 		return reading{}, errNoUsableMeters
 	}
 
-	parsed := reading{plan: limits[0].PlanType}
+	parsed := reading{plan: limits[0].PlanType, usageAllowed: response.OrdinaryUsageAllowed}
 	seen := map[string]bool{}
 	for _, limit := range limits {
 		meters, issues := limit.toMeters(observedAt)

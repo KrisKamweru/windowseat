@@ -5,34 +5,34 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"windowseat/internal/contracts"
 )
 
 func formatUsage(w io.Writer, snapshot contracts.Snapshot, now time.Time, loc *time.Location) {
+	table := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	for _, p := range snapshot.Providers {
-		name := fmt.Sprintf("%-8s", p.Provider)
 		if len(p.Meters) == 0 {
-			fmt.Fprintln(w, strings.TrimSpace(name+"["+string(p.State)+"] "+errorText(p.Error)))
+			fmt.Fprintf(table, "%s\t[%s] %s\n", p.Provider, p.State, errorText(p.Error))
 			continue
 		}
 		for _, meter := range p.Meters {
-			fmt.Fprintln(w, name+meterLine(meter, now, loc)+markers(p))
+			cells := []string{string(p.Provider), meter.Label, meterValue(meter)}
+			if tail := resetText(meter.Window, now, loc) + markers(p); tail != "" {
+				cells = append(cells, tail)
+			}
+			fmt.Fprintln(table, strings.Join(cells, "\t"))
 		}
 		if p.Error != nil {
-			fmt.Fprintln(w, name+"last read failed: "+errorText(p.Error))
+			fmt.Fprintf(table, "%s\tlast read failed: %s\n", p.Provider, errorText(p.Error))
+		}
+		if p.UsageAllowed != nil && !*p.UsageAllowed {
+			fmt.Fprintf(table, "%s\tprovider reports usage not allowed\n", p.Provider)
 		}
 	}
-}
-
-func meterLine(meter contracts.Meter, now time.Time, loc *time.Location) string {
-	line := fmt.Sprintf("%-23s", meter.Label)
-	reset := resetText(meter.Window, now, loc)
-	if reset == "" {
-		return line + meterValue(meter)
-	}
-	return line + fmt.Sprintf("%-12s", meterValue(meter)) + reset
+	table.Flush()
 }
 
 func meterValue(meter contracts.Meter) string {

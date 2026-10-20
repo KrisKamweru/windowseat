@@ -1,9 +1,17 @@
 package main
 
-import "windowseat/internal/providers"
+import (
+	"windowseat/internal/providers"
+	"windowseat/internal/providers/claude"
+	"windowseat/internal/providers/codex"
+	"windowseat/internal/providers/copilot"
+)
 
 // newReaders is the single place where provider adapters are wired in.
-// Add one reader per provider here.
 func newReaders() []providers.Reader {
-	return nil
+	return []providers.Reader{
+		claude.NewReader(claude.Options{}),
+		codex.NewReader(codex.Options{}),
+		copilot.NewReader(copilot.Options{}),
+	}
 }

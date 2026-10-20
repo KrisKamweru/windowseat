@@ -103,6 +103,7 @@ func (r *reader) Read(ctx context.Context) contracts.ProviderSnapshot {
 		Freshness:    contracts.Freshness{State: contracts.FreshnessCurrent, MaxAgeSeconds: freshnessMaxAgeSeconds},
 		Completeness: completeness,
 		Plan:         parsed.plan,
+		UsageAllowed: parsed.usageAllowed,
 		Meters:       parsed.meters,
 		Issues:       parsed.issues,
 	}

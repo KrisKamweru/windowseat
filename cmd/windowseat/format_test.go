@@ -40,16 +40,16 @@ func TestFormatUsage(t *testing.T) {
 			name:     "healthy meters",
 			provider: claudeReading(contracts.ProviderHealthy, contracts.FreshnessCurrent),
 			want: []string{
-				"claude  Current session        31% used    resets 17:49 (in 2h10m)",
-				"claude  Current week           12.5% used  resets Oct 26 18:39 (in 6d3h)",
+				"claude  Current session  31% used    resets 17:49 (in 2h10m)",
+				"claude  Current week     12.5% used  resets Oct 26 18:39 (in 6d3h)",
 			},
 		},
 		{
 			name:     "stale and expired readings are marked",
 			provider: claudeReading(contracts.ProviderStale, contracts.FreshnessExpired),
 			want: []string{
-				"claude  Current session        31% used    resets 17:49 (in 2h10m)  [stale, expired]",
-				"claude  Current week           12.5% used  resets Oct 26 18:39 (in 6d3h)  [stale, expired]",
+				"claude  Current session  31% used    resets 17:49 (in 2h10m)  [stale, expired]",
+				"claude  Current week     12.5% used  resets Oct 26 18:39 (in 6d3h)  [stale, expired]",
 			},
 		},
 		{
@@ -58,7 +58,7 @@ func TestFormatUsage(t *testing.T) {
 				Provider: contracts.ProviderCopilot, State: contracts.ProviderAuthRequired,
 				Error: &contracts.ProviderError{Message: "not signed in", RecoveryHint: "Run copilot and sign in."},
 			},
-			want: []string{"copilot [auth_required] not signed in. Run copilot and sign in."},
+			want: []string{"copilot  [auth_required] not signed in. Run copilot and sign in."},
 		},
 		{
 			name: "quota counts and unknown values",
@@ -72,9 +72,26 @@ func TestFormatUsage(t *testing.T) {
 				},
 			},
 			want: []string{
-				"copilot Premium interactions   120/300 used  [partial]",
-				"copilot Chat                   unlimited  [partial]",
-				"copilot Completions            unknown  [partial]",
+				"copilot  Premium interactions  120/300 used    [partial]",
+				"copilot  Chat                  unlimited       [partial]",
+				"copilot  Completions           unknown         [partial]",
+			},
+		},
+		{
+			name: "long labels stay aligned and a provider denial is shown",
+			provider: contracts.ProviderSnapshot{
+				Provider: contracts.ProviderCodex, State: contracts.ProviderHealthy,
+				Freshness:    contracts.Freshness{State: contracts.FreshnessCurrent},
+				UsageAllowed: ptr(false),
+				Meters: []contracts.Meter{
+					{Label: "Current week (all models)", UsedPercentage: ptr(9.0)},
+					{Label: "Five-hour window", UsedPercentage: ptr(100.0)},
+				},
+			},
+			want: []string{
+				"codex  Current week (all models)  9% used",
+				"codex  Five-hour window           100% used",
+				"codex  provider reports usage not allowed",
 			},
 		},
 	}
