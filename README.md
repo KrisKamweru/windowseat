@@ -63,6 +63,7 @@ On Windows, run it from PowerShell in the folder that holds both `.exe` files. P
 ```powershell
 .\windowseat.exe install
 .\windowseat.exe install --no-tray
+.\windowseat.exe install --add-to-path
 & "$env:LOCALAPPDATA\Programs\Windowseat\windowseat.exe" uninstall
 ```
 
@@ -84,6 +85,10 @@ To let agents read usage over MCP, register the server with each tool:
 claude mcp add windowseat -- windowseat mcp
 codex mcp add windowseat -- windowseat mcp
 ```
+
+### Setup wizard on Windows
+
+Each release on the [Releases page](https://github.com/KrisKamweru/windowseat/releases) has a `windowseat-<version>-windows-amd64-setup.exe`, and an `arm64` one for ARM PCs. It installs for your user only and needs no admin rights. Two checkboxes, both on by default, choose whether to show the tray icon and whether to add Windowseat to your PATH. Running a newer setup upgrades in place. To remove Windowseat, uninstall it from Apps & Features in Settings.
 
 ## License
 
