@@ -159,11 +159,9 @@ func readLimits(limits []rateLimit, extra *extraUsage, observedAt time.Time) (re
 		return reading{}, &reportUnreadable
 	}
 
-	if extra != nil && extra.IsEnabled {
-		meter, issues := extra.meter()
-		result.meters = append(result.meters, meter)
-		result.issues = append(result.issues, issues...)
-	}
+	meters, issues := extra.meters()
+	result.meters = append(result.meters, meters...)
+	result.issues = append(result.issues, issues...)
 	return result, nil
 }
 
@@ -178,4 +176,5 @@ var issueMessages = map[string]string{
 	"reset_time_unreadable": "The provider reset time could not be read.",
 	"reset_time_not_future": "The provider reset time was not later than the observation time.",
 	"value_out_of_range":    "The provider reported a negative value.",
+	"field_unreadable":      "The provider returned a value of the wrong type.",
 }

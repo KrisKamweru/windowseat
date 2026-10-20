@@ -7,24 +7,27 @@ import (
 	"time"
 
 	"windowseat/internal/contracts"
+	"windowseat/internal/providers/jsonfield"
 )
 
 type rateLimit struct {
-	Kind     string   `json:"kind"`
-	Percent  *float64 `json:"percent"`
-	ResetsAt *string  `json:"resets_at"`
-	Scope    *struct {
-		Model *struct {
-			DisplayName string `json:"display_name"`
-		} `json:"model"`
-	} `json:"scope"`
+	Kind     jsonfield.Field[string]     `json:"kind"`
+	Percent  jsonfield.Field[float64]    `json:"percent"`
+	ResetsAt jsonfield.Field[string]     `json:"resets_at"`
+	Scope    jsonfield.Field[limitScope] `json:"scope"`
+}
+
+type limitScope struct {
+	Model *struct {
+		DisplayName string `json:"display_name"`
+	} `json:"model"`
 }
 
 type extraUsage struct {
-	IsEnabled    bool     `json:"is_enabled"`
-	MonthlyLimit *float64 `json:"monthly_limit"`
-	UsedCredits  *float64 `json:"used_credits"`
-	Currency     string   `json:"currency"`
+	IsEnabled    jsonfield.Field[bool]    `json:"is_enabled"`
+	MonthlyLimit jsonfield.Field[float64] `json:"monthly_limit"`
+	UsedCredits  jsonfield.Field[float64] `json:"used_credits"`
+	Currency     jsonfield.Field[string]  `json:"currency"`
 }
 
 var knownLabels = map[string]string{
@@ -36,16 +39,24 @@ var knownLabels = map[string]string{
 var nonSlugCharacters = regexp.MustCompile(`[^a-z0-9]+`)
 
 // meter maps one provider limit. Unknown kinds keep their provider name, so a
-// new Claude limit shows up without a parser change.
+// new Claude limit shows up without a parser change. A limit whose kind or
+// scope cannot be read has no identity and becomes only an issue.
 func (limit rateLimit) meter(index int, observedAt time.Time) (*contracts.Meter, []contracts.ObservationIssue) {
-	if strings.TrimSpace(limit.Kind) == "" {
-		return nil, []contracts.ObservationIssue{issue("limit_kind_missing", "", fmt.Sprintf("rate_limits.limits[%d].kind", index))}
+	path := fmt.Sprintf("rate_limits.limits[%d]", index)
+	switch {
+	case limit.Kind.Unreadable:
+		return nil, []contracts.ObservationIssue{issue("field_unreadable", "", path+".kind")}
+	case limit.Kind.Value == nil || strings.TrimSpace(*limit.Kind.Value) == "":
+		return nil, []contracts.ObservationIssue{issue("limit_kind_missing", "", path+".kind")}
+	case limit.Scope.Unreadable:
+		return nil, []contracts.ObservationIssue{issue("field_unreadable", "", path+".scope")}
 	}
 
+	kind := *limit.Kind.Value
 	model := limit.model()
 	meter := contracts.Meter{
-		ID:    meterID(limit.Kind, model),
-		Label: meterLabel(limit.Kind, model),
+		ID:    meterID(kind, model),
+		Label: meterLabel(kind, model),
 		Kind:  contracts.MeterRollingWindow,
 		Model: model,
 	}
@@ -54,16 +65,21 @@ func (limit rateLimit) meter(index int, observedAt time.Time) (*contracts.Meter,
 	}
 
 	var issues []contracts.ObservationIssue
-	switch {
-	case limit.Percent == nil:
+	switch percent := limit.Percent.Value; {
+	case limit.Percent.Unreadable:
+		issues = append(issues, issue("field_unreadable", meter.ID, "used_percentage"))
+	case percent == nil:
 		issues = append(issues, issue("percent_missing", meter.ID, "used_percentage"))
-	case *limit.Percent < 0 || *limit.Percent > 100:
+	case *percent < 0 || *percent > 100:
 		issues = append(issues, issue("percent_out_of_range", meter.ID, "used_percentage"))
 	default:
-		meter.UsedPercentage = limit.Percent
+		meter.UsedPercentage = percent
 	}
 
-	window, resetIssue := resetWindow(limit.ResetsAt, observedAt)
+	if limit.ResetsAt.Unreadable {
+		return &meter, append(issues, issue("field_unreadable", meter.ID, "window.resets_at"))
+	}
+	window, resetIssue := resetWindow(limit.ResetsAt.Value, observedAt)
 	meter.Window = window
 	if resetIssue != "" {
 		issues = append(issues, issue(resetIssue, meter.ID, "window.resets_at"))
@@ -72,10 +88,11 @@ func (limit rateLimit) meter(index int, observedAt time.Time) (*contracts.Meter,
 }
 
 func (limit rateLimit) model() string {
-	if limit.Scope == nil || limit.Scope.Model == nil {
+	scope := limit.Scope.Value
+	if scope == nil || scope.Model == nil {
 		return ""
 	}
-	return strings.TrimSpace(limit.Scope.Model.DisplayName)
+	return strings.TrimSpace(scope.Model.DisplayName)
 }
 
 // resetWindow treats a null reset as an allowed omission. An unreadable or
@@ -117,23 +134,46 @@ func slug(text string) string {
 	return strings.Trim(nonSlugCharacters.ReplaceAllString(strings.ToLower(text), "_"), "_")
 }
 
+const extraUsageID = "extra_usage"
+
+// meters returns the extra usage credit meter when the provider reports it enabled.
+func (extra *extraUsage) meters() ([]contracts.Meter, []contracts.ObservationIssue) {
+	switch {
+	case extra == nil:
+		return nil, nil
+	case extra.IsEnabled.Unreadable:
+		return nil, []contracts.ObservationIssue{issue("field_unreadable", extraUsageID, "rate_limits.extra_usage.is_enabled")}
+	case extra.IsEnabled.Value == nil || !*extra.IsEnabled.Value:
+		return nil, nil
+	}
+	meter, issues := extra.meter()
+	return []contracts.Meter{meter}, issues
+}
+
 func (extra extraUsage) meter() (contracts.Meter, []contracts.ObservationIssue) {
-	const id = "extra_usage"
 	meter := contracts.Meter{
-		ID:    id,
+		ID:    extraUsageID,
 		Label: "Extra usage",
 		Kind:  contracts.MeterCreditBalance,
-		Unit:  extra.Currency,
 	}
 	var issues []contracts.ObservationIssue
-	meter.Used, issues = nonNegative(extra.UsedCredits, id, "used", issues)
-	meter.Entitlement, issues = nonNegative(extra.MonthlyLimit, id, "entitlement", issues)
+	if extra.Currency.Unreadable {
+		issues = append(issues, issue("field_unreadable", extraUsageID, "unit"))
+	} else if extra.Currency.Value != nil {
+		meter.Unit = *extra.Currency.Value
+	}
+	meter.Used, issues = nonNegative(extra.UsedCredits, extraUsageID, "used", issues)
+	meter.Entitlement, issues = nonNegative(extra.MonthlyLimit, extraUsageID, "entitlement", issues)
 	return meter, issues
 }
 
-func nonNegative(value *float64, meterID, field string, issues []contracts.ObservationIssue) (*float64, []contracts.ObservationIssue) {
-	if value != nil && *value < 0 {
-		return nil, append(issues, issue("value_out_of_range", meterID, field))
+func nonNegative(field jsonfield.Field[float64], meterID, name string, issues []contracts.ObservationIssue) (*float64, []contracts.ObservationIssue) {
+	switch {
+	case field.Unreadable:
+		return nil, append(issues, issue("field_unreadable", meterID, name))
+	case field.Value != nil && *field.Value < 0:
+		return nil, append(issues, issue("value_out_of_range", meterID, name))
+	default:
+		return field.Value, issues
 	}
-	return value, issues
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"windowseat/internal/contracts"
+	"windowseat/internal/providers/jsonfield"
 )
 
 const defaultLimitID = "codex"
@@ -21,31 +22,31 @@ var errNoUsableMeters = errors.New("rate-limit response has no usable meters")
 // The response also carries accountId and rateLimitResetCredits. They are
 // deliberately not decoded so they cannot reach a snapshot.
 type rateLimitsResult struct {
-	OrdinaryUsageAllowed *bool                    `json:"ordinaryUsageAllowed"`
+	OrdinaryUsageAllowed jsonfield.Field[bool]    `json:"ordinaryUsageAllowed"`
 	RateLimits           *limitSnapshot           `json:"rateLimits"`
 	RateLimitsByLimitID  map[string]limitSnapshot `json:"rateLimitsByLimitId"`
 }
 
 type limitSnapshot struct {
-	LimitID         string   `json:"limitId"`
-	LimitName       string   `json:"limitName"`
-	NormalModelSlug string   `json:"normalModelSlug"`
-	PlanType        string   `json:"planType"`
-	Primary         *window  `json:"primary"`
-	Secondary       *window  `json:"secondary"`
-	Credits         *credits `json:"credits"`
+	LimitID         jsonfield.Field[string] `json:"limitId"`
+	LimitName       jsonfield.Field[string] `json:"limitName"`
+	NormalModelSlug jsonfield.Field[string] `json:"normalModelSlug"`
+	PlanType        jsonfield.Field[string] `json:"planType"`
+	Primary         *window                 `json:"primary"`
+	Secondary       *window                 `json:"secondary"`
+	Credits         *credits                `json:"credits"`
 }
 
 type window struct {
-	UsedPercent        *float64 `json:"usedPercent"`
-	WindowDurationMins *int64   `json:"windowDurationMins"`
-	ResetsAt           *int64   `json:"resetsAt"`
+	UsedPercent        jsonfield.Field[float64] `json:"usedPercent"`
+	WindowDurationMins jsonfield.Field[int64]   `json:"windowDurationMins"`
+	ResetsAt           jsonfield.Field[int64]   `json:"resetsAt"`
 }
 
 type credits struct {
-	HasCredits bool    `json:"hasCredits"`
-	Unlimited  bool    `json:"unlimited"`
-	Balance    *string `json:"balance"`
+	HasCredits jsonfield.Field[bool]   `json:"hasCredits"`
+	Unlimited  jsonfield.Field[bool]   `json:"unlimited"`
+	Balance    jsonfield.Field[string] `json:"balance"`
 }
 
 type reading struct {
@@ -68,7 +69,13 @@ func parseRateLimits(result json.RawMessage, observedAt time.Time) (reading, err
 		return reading{}, errNoUsableMeters
 	}
 
-	parsed := reading{plan: limits[0].PlanType, usageAllowed: response.OrdinaryUsageAllowed}
+	parsed := reading{plan: limits[0].PlanType.OrZero(), usageAllowed: response.OrdinaryUsageAllowed.Value}
+	if limits[0].PlanType.Unreadable {
+		parsed.issues = append(parsed.issues, unreadable("", "plan"))
+	}
+	if response.OrdinaryUsageAllowed.Unreadable {
+		parsed.issues = append(parsed.issues, unreadable("", "usage_allowed"))
+	}
 	seen := map[string]bool{}
 	for _, limit := range limits {
 		meters, issues := limit.toMeters(observedAt)
@@ -119,7 +126,7 @@ func (response rateLimitsResult) limits() []limitSnapshot {
 	limits := make([]limitSnapshot, len(ids))
 	for index, id := range ids {
 		limit := response.RateLimitsByLimitID[id]
-		limit.LimitID = id
+		limit.LimitID = jsonfield.Field[string]{Value: &id}
 		limits[index] = limit
 	}
 	return limits
@@ -128,6 +135,12 @@ func (response rateLimitsResult) limits() []limitSnapshot {
 func (limit limitSnapshot) toMeters(observedAt time.Time) ([]contracts.Meter, []contracts.ObservationIssue) {
 	var meters []contracts.Meter
 	var issues []contracts.ObservationIssue
+	if limit.LimitID.Unreadable {
+		issues = append(issues, unreadable("", "limit_id"))
+	}
+	if limit.LimitName.Unreadable {
+		issues = append(issues, unreadable("", "label"))
+	}
 	slots := []struct {
 		name   string
 		window *window
@@ -141,7 +154,7 @@ func (limit limitSnapshot) toMeters(observedAt time.Time) ([]contracts.Meter, []
 		meters = append(meters, meter)
 		issues = append(issues, windowIssues...)
 	}
-	if limit.Credits != nil && (limit.Credits.HasCredits || limit.Credits.Unlimited) {
+	if limit.Credits != nil && limit.Credits.present() {
 		meter, creditIssues := limit.creditMeter(*limit.Credits)
 		meters = append(meters, meter)
 		issues = append(issues, creditIssues...)
@@ -150,24 +163,32 @@ func (limit limitSnapshot) toMeters(observedAt time.Time) ([]contracts.Meter, []
 }
 
 func (limit limitSnapshot) windowMeter(slot string, source window, observedAt time.Time) (contracts.Meter, []contracts.ObservationIssue) {
-	id, label := windowName(slot, source.WindowDurationMins)
+	id, label := windowName(slot, source.WindowDurationMins.Value)
 	meter := contracts.Meter{
 		ID:     limit.meterID(id),
 		Label:  limit.meterLabel(label),
 		Kind:   contracts.MeterRollingWindow,
-		Model:  limit.NormalModelSlug,
+		Model:  limit.NormalModelSlug.OrZero(),
 		Window: &contracts.TimeWindow{},
 	}
 	var issues []contracts.ObservationIssue
+	if limit.NormalModelSlug.Unreadable {
+		issues = append(issues, unreadable(meter.ID, "model"))
+	}
 
-	if duration := source.WindowDurationMins; duration != nil && *duration > 0 {
+	switch duration := source.WindowDurationMins.Value; {
+	case source.WindowDurationMins.Unreadable:
+		issues = append(issues, unreadable(meter.ID, "window.duration_seconds"))
+	case duration != nil && *duration > 0:
 		seconds := *duration * 60
 		meter.Window.DurationSeconds = &seconds
-	} else {
+	default:
 		issues = append(issues, issue("missing_field", meter.ID, "window.duration_seconds", "The provider did not report a usable window duration."))
 	}
 
-	switch percent := source.UsedPercent; {
+	switch percent := source.UsedPercent.Value; {
+	case source.UsedPercent.Unreadable:
+		issues = append(issues, unreadable(meter.ID, "used_percentage"))
 	case percent == nil:
 		issues = append(issues, issue("missing_field", meter.ID, "used_percentage", "The provider did not report a used percentage."))
 	case *percent < 0 || *percent > 100 || math.IsNaN(*percent):
@@ -176,8 +197,11 @@ func (limit limitSnapshot) windowMeter(slot string, source window, observedAt ti
 		meter.UsedPercentage = percent
 	}
 
-	if source.ResetsAt != nil {
-		resetsAt := time.Unix(*source.ResetsAt, 0).UTC()
+	if source.ResetsAt.Unreadable {
+		issues = append(issues, unreadable(meter.ID, "window.resets_at"))
+	}
+	if source.ResetsAt.Value != nil {
+		resetsAt := time.Unix(*source.ResetsAt.Value, 0).UTC()
 		if resetsAt.After(observedAt) {
 			meter.Window.ResetsAt = &resetsAt
 		} else {
@@ -198,17 +222,27 @@ func (limit limitSnapshot) creditMeter(source credits) (contracts.Meter, []contr
 		Label:     limit.meterLabel("Credits"),
 		Kind:      contracts.MeterCreditBalance,
 		Unit:      "credits",
-		Unlimited: &source.Unlimited,
+		Unlimited: source.Unlimited.Value,
 	}
-	if source.Balance == nil {
-		return meter, nil
+	var issues []contracts.ObservationIssue
+	if source.Unlimited.Unreadable {
+		issues = append(issues, unreadable(meter.ID, "unlimited"))
 	}
-	balance, err := strconv.ParseFloat(*source.Balance, 64)
+	if source.Balance.Value == nil && !source.Balance.Unreadable {
+		return meter, issues
+	}
+	balance, err := strconv.ParseFloat(source.Balance.OrZero(), 64)
 	if err != nil || balance < 0 || math.IsInf(balance, 0) || math.IsNaN(balance) {
-		return meter, []contracts.ObservationIssue{issue("unreadable_field", meter.ID, "remaining", "The provider credit balance was not a non-negative number.")}
+		return meter, append(issues, issue("unreadable_field", meter.ID, "remaining", "The provider credit balance was not a non-negative number."))
 	}
 	meter.Remaining = &balance
-	return meter, nil
+	return meter, issues
+}
+
+// present reports whether the provider says a credit balance exists. A flag it
+// sent but could not be read still shows the meter, so the issue has a home.
+func (source credits) present() bool {
+	return source.HasCredits.OrZero() || source.Unlimited.OrZero() || source.HasCredits.Unreadable || source.Unlimited.Unreadable
 }
 
 func windowName(slot string, durationMins *int64) (id, label string) {
@@ -226,27 +260,32 @@ func windowName(slot string, durationMins *int64) (id, label string) {
 }
 
 func (limit limitSnapshot) isDefault() bool {
-	return limit.LimitID == "" || limit.LimitID == defaultLimitID
+	id := limit.LimitID.OrZero()
+	return id == "" || id == defaultLimitID
 }
 
 func (limit limitSnapshot) meterID(id string) string {
 	if limit.isDefault() {
 		return id
 	}
-	return limit.LimitID + "_" + id
+	return limit.LimitID.OrZero() + "_" + id
 }
 
 func (limit limitSnapshot) meterLabel(label string) string {
 	if limit.isDefault() {
 		return label
 	}
-	name := limit.LimitName
+	name := limit.LimitName.OrZero()
 	if name == "" {
-		name = limit.LimitID
+		name = limit.LimitID.OrZero()
 	}
 	return name + " " + strings.ToLower(label[:1]) + label[1:]
 }
 
 func issue(code, meterID, field, message string) contracts.ObservationIssue {
 	return contracts.ObservationIssue{Code: code, MeterID: meterID, Field: field, Message: message}
+}
+
+func unreadable(meterID, field string) contracts.ObservationIssue {
+	return issue("unreadable_field", meterID, field, "The provider returned a value of the wrong type.")
 }

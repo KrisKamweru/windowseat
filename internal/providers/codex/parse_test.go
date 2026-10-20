@@ -170,6 +170,43 @@ func TestParseReportsOutOfRangePercentageAsIssue(t *testing.T) {
 	}
 }
 
+func TestParseKeepsOtherFieldsWhenOneIsWronglyTyped(t *testing.T) {
+	result := json.RawMessage(`{"ordinaryUsageAllowed":"no","rateLimits":{
+		"planType":7,
+		"primary":{"usedPercent":"89","windowDurationMins":300,"resetsAt":1792505356},
+		"secondary":{"usedPercent":14,"windowDurationMins":10080,"resetsAt":"soon"},
+		"credits":{"hasCredits":true,"unlimited":false,"balance":12}}}`)
+
+	reading, err := parseRateLimits(result, probeTime)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	fiveHour := meterByID(t, reading.meters, "five_hour")
+	if fiveHour.UsedPercentage != nil || fiveHour.Window == nil || fiveHour.Window.ResetsAt == nil {
+		t.Errorf("five_hour = %+v, want reset kept and percentage dropped", fiveHour)
+	}
+	sevenDay := meterByID(t, reading.meters, "seven_day")
+	if sevenDay.UsedPercentage == nil || *sevenDay.UsedPercentage != 14 || sevenDay.Window.ResetsAt != nil {
+		t.Errorf("seven_day = %+v, want percentage kept and reset dropped", sevenDay)
+	}
+	if credits := meterByID(t, reading.meters, "credits"); credits.Remaining != nil {
+		t.Errorf("credits remaining = %v, want dropped", *credits.Remaining)
+	}
+	if reading.plan != "" || reading.usageAllowed != nil {
+		t.Errorf("plan = %q, usage allowed = %v, want both dropped", reading.plan, reading.usageAllowed)
+	}
+	got := map[string]bool{}
+	for _, issue := range reading.issues {
+		got[issue.MeterID+"/"+issue.Field] = true
+	}
+	for _, want := range []string{"/plan", "/usage_allowed", "five_hour/used_percentage", "seven_day/window.resets_at", "credits/remaining"} {
+		if !got[want] {
+			t.Errorf("missing issue %s in %+v", want, reading.issues)
+		}
+	}
+}
+
 func TestParseRejectsResponsesWithoutWindows(t *testing.T) {
 	for name, result := range map[string]string{
 		"not json":     `[`,

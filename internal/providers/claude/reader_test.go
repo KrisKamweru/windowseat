@@ -130,6 +130,38 @@ func TestUnreadableFieldsBecomeIssues(t *testing.T) {
 	}
 }
 
+func TestWronglyTypedFieldsCostOnlyThatField(t *testing.T) {
+	output := mutateFixture(t, func(assistant, _ map[string]any) {
+		report := rateLimits(assistant)
+		limits := report["limits"].([]any)
+		limits[0].(map[string]any)["percent"] = "31"
+		limits[1].(map[string]any)["resets_at"] = 1792505356
+		limits[2].(map[string]any)["scope"] = "Fable"
+		report["extra_usage"] = map[string]any{"is_enabled": true, "monthly_limit": 50.0, "used_credits": "12.5", "currency": "USD"}
+	})
+	snapshot := readWith(t, output, nil)
+
+	if snapshot.State != contracts.ProviderPartial || len(snapshot.Meters) != 3 {
+		t.Fatalf("state = %q, meters = %+v, want partial with session, weekly_all and extra_usage", snapshot.State, snapshot.Meters)
+	}
+	session, weekly, extra := snapshot.Meters[0], snapshot.Meters[1], snapshot.Meters[2]
+	if session.UsedPercentage != nil || session.Window == nil || session.Window.ResetsAt == nil {
+		t.Errorf("session meter = %+v, want reset kept and percentage dropped", session)
+	}
+	if weekly.UsedPercentage == nil || *weekly.UsedPercentage != 5 || weekly.Window != nil {
+		t.Errorf("weekly_all meter = %+v, want percentage kept and reset dropped", weekly)
+	}
+	if extra.ID != "extra_usage" || extra.Used != nil || extra.Entitlement == nil || *extra.Entitlement != 50 {
+		t.Errorf("extra meter = %+v, want entitlement kept and used dropped", extra)
+	}
+	codes := issueCodes(snapshot)
+	for _, key := range []string{"session/used_percentage", "weekly_all/window.resets_at", "/rate_limits.limits[2].scope", "extra_usage/used"} {
+		if codes[key] != "field_unreadable" {
+			t.Errorf("issue %s = %q, want field_unreadable; issues = %+v", key, codes[key], snapshot.Issues)
+		}
+	}
+}
+
 func TestUnknownLimitKindIsPreserved(t *testing.T) {
 	output := mutateFixture(t, func(assistant, _ map[string]any) {
 		report := rateLimits(assistant)
