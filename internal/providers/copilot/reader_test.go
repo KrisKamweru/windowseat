@@ -189,3 +189,14 @@ func fakeResult(scenario, name string) json.RawMessage {
 	}
 	return json.RawMessage(fixture)
 }
+
+func TestReceiveRefusesOversizedFrames(t *testing.T) {
+	frame := fmt.Sprintf("Content-Length: %d\r\n\r\n", maxFrameBytes+1)
+	r := &runtime{stdout: bufio.NewReader(strings.NewReader(frame))}
+
+	_, err := r.receive()
+
+	if err == nil || !strings.Contains(err.Error(), "Content-Length") {
+		t.Fatalf("err = %v, want a Content-Length refusal before reading the body", err)
+	}
+}

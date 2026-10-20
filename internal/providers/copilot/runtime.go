@@ -36,7 +36,10 @@ var allowedMethods = map[method]bool{
 // npm loader bundles instead of a newer cached or downloaded one.
 var runtimeArgs = []string{"--headless", "--no-auto-update", "--stdio"}
 
-const stopGracePeriod = 5 * time.Second
+const (
+	stopGracePeriod = 5 * time.Second
+	maxFrameBytes   = 4 << 20
+)
 
 type connectResult struct {
 	ProtocolVersion int64  `json:"protocolVersion"`
@@ -187,7 +190,7 @@ func (r *runtime) receive() (incoming, error) {
 		return incoming{}, err
 	}
 	length, err := strconv.Atoi(headers.Get("Content-Length"))
-	if err != nil || length <= 0 {
+	if err != nil || length <= 0 || length > maxFrameBytes {
 		return incoming{}, errors.New("copilot runtime sent a frame without a valid Content-Length")
 	}
 	body := make([]byte, length)
