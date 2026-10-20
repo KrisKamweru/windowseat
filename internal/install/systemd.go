@@ -3,6 +3,8 @@ package install
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 const systemdService = "windowseat.service"
@@ -29,7 +31,7 @@ func systemdInstall(env Env, opts Options) Plan {
 	}
 	steps = append(steps, copyBinaries(env, paths.bin, env.binaries(opts)...)...)
 	steps = append(steps,
-		writeFile{path: paths.unit, data: systemdUnit(filepath.Join(paths.bin, "windowseat"))},
+		writeFile{path: paths.unit, data: systemdUnit(filepath.Join(paths.bin, "windowseat"), env.Path)},
 		command{args: systemctl("daemon-reload")},
 		command{args: systemctl("enable", "--now", systemdService)},
 	)
@@ -61,17 +63,20 @@ func systemctl(args ...string) []string {
 	return append([]string{"systemctl", "--user"}, args...)
 }
 
-func systemdUnit(exe string) string {
+// systemdUnit carries the installer's PATH because systemd starts user
+// services with its own short PATH, which misses nvm and ~/.local/bin.
+func systemdUnit(exe, path string) string {
 	return fmt.Sprintf(`[Unit]
 Description=Windowseat AI coding quota monitor
 
 [Service]
 ExecStart=%q serve
+Environment=%s
 Restart=on-failure
 
 [Install]
 WantedBy=default.target
-`, exe)
+`, exe, strings.ReplaceAll(strconv.Quote("PATH="+path), "%", "%%"))
 }
 
 func desktopEntry(exe string) string {

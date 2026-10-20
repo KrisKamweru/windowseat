@@ -10,6 +10,7 @@ import (
 func linuxEnv() Env {
 	return Env{
 		OS:         "linux",
+		Path:       "/home/k/.nvm/bin:/usr/bin",
 		Home:       "/home/k",
 		ConfigHome: "/home/k/.config",
 		TempDir:    "/tmp",
@@ -40,6 +41,7 @@ func windowsEnv() Env {
 func darwinEnv() Env {
 	return Env{
 		OS:         "darwin",
+		Path:       "/opt/homebrew/bin:/usr/bin",
 		Home:       "/Users/k",
 		TempDir:    "/tmp",
 		SourceDir:  "/src",
@@ -83,7 +85,7 @@ func TestLinuxInstallPlan(t *testing.T) {
 		stopProcesses{exe: "/home/k/.local/bin/windowseat-tray"},
 		copyFile{from: "/src/dist/windowseat", to: "/home/k/.local/bin/windowseat"},
 		copyFile{from: "/src/dist/windowseat-tray", to: "/home/k/.local/bin/windowseat-tray"},
-		writeFile{path: "/home/k/.config/systemd/user/windowseat.service", data: systemdUnit("/home/k/.local/bin/windowseat")},
+		writeFile{path: "/home/k/.config/systemd/user/windowseat.service", data: systemdUnit("/home/k/.local/bin/windowseat", "/home/k/.nvm/bin:/usr/bin")},
 		command{args: []string{"systemctl", "--user", "daemon-reload"}},
 		command{args: []string{"systemctl", "--user", "enable", "--now", "windowseat.service"}},
 		writeFile{path: "/home/k/.config/autostart/windowseat-tray.desktop", data: desktopEntry("/home/k/.local/bin/windowseat-tray")},
@@ -95,8 +97,8 @@ func TestLinuxInstallPlan(t *testing.T) {
 }
 
 func TestLinuxUnitAndDesktopEntry(t *testing.T) {
-	unit := systemdUnit("/home/k/.local/bin/windowseat")
-	for _, line := range []string{`ExecStart="/home/k/.local/bin/windowseat" serve`, "Restart=on-failure", "WantedBy=default.target"} {
+	unit := systemdUnit("/home/k/.local/bin/windowseat", `/home/k/100%/bin:/usr/bin`)
+	for _, line := range []string{`ExecStart="/home/k/.local/bin/windowseat" serve`, `Environment="PATH=/home/k/100%%/bin:/usr/bin"`, "Restart=on-failure", "WantedBy=default.target"} {
 		if !strings.Contains(unit, line+"\n") {
 			t.Errorf("unit lacks %q:\n%s", line, unit)
 		}
@@ -345,8 +347,8 @@ func TestDarwinInstallPlan(t *testing.T) {
 		command{args: []string{"launchctl", "bootout", "gui/501/dev.windowseat.tray"}, mayFail: true},
 		copyFile{from: "/src/windowseat", to: dir + "/windowseat"},
 		copyFile{from: "/src/windowseat-tray", to: dir + "/windowseat-tray"},
-		writeFile{path: agents + "/dev.windowseat.service.plist", data: launchAgent("dev.windowseat.service", true, dir+"/windowseat", "serve")},
-		writeFile{path: agents + "/dev.windowseat.tray.plist", data: launchAgent("dev.windowseat.tray", false, dir+"/windowseat-tray")},
+		writeFile{path: agents + "/dev.windowseat.service.plist", data: launchAgent("dev.windowseat.service", true, "/opt/homebrew/bin:/usr/bin", dir+"/windowseat", "serve")},
+		writeFile{path: agents + "/dev.windowseat.tray.plist", data: launchAgent("dev.windowseat.tray", false, "/opt/homebrew/bin:/usr/bin", dir+"/windowseat-tray")},
 		command{args: []string{"launchctl", "bootstrap", "gui/501", agents + "/dev.windowseat.service.plist"}},
 		command{args: []string{"launchctl", "bootstrap", "gui/501", agents + "/dev.windowseat.tray.plist"}},
 	}
@@ -356,8 +358,9 @@ func TestDarwinInstallPlan(t *testing.T) {
 }
 
 func TestLaunchAgent(t *testing.T) {
-	plist := launchAgent("dev.windowseat.service", true, "/a b/windowseat", "serve")
+	plist := launchAgent("dev.windowseat.service", true, "/a&b:/usr/bin", "/a b/windowseat", "serve")
 	for _, part := range []string{
+		"<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key>\n\t\t<string>/a&amp;b:/usr/bin</string>\n\t</dict>",
 		"<key>Label</key>\n\t<string>dev.windowseat.service</string>",
 		"<string>/a b/windowseat</string>\n\t\t<string>serve</string>",
 		"<key>RunAtLoad</key>\n\t<true/>",
@@ -367,7 +370,7 @@ func TestLaunchAgent(t *testing.T) {
 			t.Errorf("plist lacks %q:\n%s", part, plist)
 		}
 	}
-	if strings.Contains(launchAgent("dev.windowseat.tray", false, "/tray"), "KeepAlive") {
+	if strings.Contains(launchAgent("dev.windowseat.tray", false, "/usr/bin", "/tray"), "KeepAlive") {
 		t.Error("tray plist keeps the tray alive")
 	}
 }

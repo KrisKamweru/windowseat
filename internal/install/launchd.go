@@ -47,7 +47,7 @@ func launchdInstall(env Env, opts Options) Plan {
 	steps = append(steps, copyBinaries(env, bin, env.binaries(opts)...)...)
 	for _, a := range agents {
 		program := append([]string{filepath.Join(bin, a.binary)}, a.args...)
-		steps = append(steps, writeFile{path: a.plist(env), data: launchAgent(a.label, a.keepAlive, program...)})
+		steps = append(steps, writeFile{path: a.plist(env), data: launchAgent(a.label, a.keepAlive, env.Path, program...)})
 	}
 	for _, a := range agents {
 		steps = append(steps, command{args: []string{"launchctl", "bootstrap", guiDomain(env), a.plist(env)}})
@@ -70,7 +70,9 @@ func launchdUninstall(env Env) Plan {
 	return Plan{Steps: append(steps, removeState(env)...)}
 }
 
-func launchAgent(label string, keepAlive bool, program ...string) string {
+// launchAgent carries the installer's PATH because launchd starts agents
+// with a short default PATH that misses Homebrew and npm.
+func launchAgent(label string, keepAlive bool, path string, program ...string) string {
 	var args strings.Builder
 	for _, arg := range program {
 		args.WriteString("\n\t\t<string>" + escapeXML(arg) + "</string>")
@@ -88,9 +90,14 @@ func launchAgent(label string, keepAlive bool, program ...string) string {
 	<key>ProgramArguments</key>
 	<array>%s
 	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>%s</string>
+	</dict>
 	<key>RunAtLoad</key>
 	<true/>%s
 </dict>
 </plist>
-`, escapeXML(label), args.String(), keep)
+`, escapeXML(label), args.String(), escapeXML(path), keep)
 }

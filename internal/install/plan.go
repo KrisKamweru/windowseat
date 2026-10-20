@@ -24,6 +24,7 @@ type Env struct {
 	User         string // DOMAIN\user, for Windows tasks
 	UID          int    // for macOS launchctl domains
 	HasDisplay   bool
+	Path         string // PATH for the service, so it finds provider CLIs
 	StateDir     string // holds the saved snapshot
 	SocketDir    string // holds the IPC socket; empty on Windows
 }

@@ -44,6 +44,7 @@ func Current() (Env, error) {
 		User:         account.Username,
 		UID:          os.Getuid(),
 		HasDisplay:   os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "",
+		Path:         os.Getenv("PATH"),
 		StateDir:     filepath.Dir(statePath),
 	}
 	if env.ConfigHome == "" {
