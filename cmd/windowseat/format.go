@@ -39,12 +39,14 @@ func meterValue(meter contracts.Meter) string {
 	switch {
 	case meter.UsedPercentage != nil:
 		return number(*meter.UsedPercentage) + "% used"
-	case meter.RemainingPercentage != nil && (meter.Unlimited == nil || !*meter.Unlimited):
-		return number(*meter.RemainingPercentage) + "% left"
 	case meter.Unlimited != nil && *meter.Unlimited:
 		return "unlimited"
+	case meter.Used != nil && meter.Entitlement != nil && meter.RemainingPercentage != nil:
+		return number(*meter.Used) + "/" + number(*meter.Entitlement) + " used, " + number(*meter.RemainingPercentage) + "% left"
 	case meter.Used != nil && meter.Entitlement != nil:
 		return number(*meter.Used) + "/" + number(*meter.Entitlement) + " used"
+	case meter.RemainingPercentage != nil:
+		return number(*meter.RemainingPercentage) + "% left"
 	case meter.Remaining != nil:
 		return number(*meter.Remaining) + " left"
 	default:

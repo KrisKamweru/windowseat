@@ -66,15 +66,15 @@ func TestFormatUsage(t *testing.T) {
 				Provider: contracts.ProviderCopilot, State: contracts.ProviderPartial,
 				Freshness: contracts.Freshness{State: contracts.FreshnessCurrent},
 				Meters: []contracts.Meter{
-					{Label: "Premium interactions", Used: ptr(120.0), Entitlement: ptr(300.0)},
+					{Label: "Premium interactions", Used: ptr(120.0), Entitlement: ptr(300.0), RemainingPercentage: ptr(60.0)},
 					{Label: "Chat", Unlimited: ptr(true)},
 					{Label: "Completions"},
 				},
 			},
 			want: []string{
-				"copilot  Premium interactions  120/300 used    [partial]",
-				"copilot  Chat                  unlimited       [partial]",
-				"copilot  Completions           unknown         [partial]",
+				"copilot  Premium interactions  120/300 used, 60% left    [partial]",
+				"copilot  Chat                  unlimited                 [partial]",
+				"copilot  Completions           unknown                   [partial]",
 			},
 		},
 		{

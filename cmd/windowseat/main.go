@@ -24,6 +24,7 @@ commands:
   usage    print provider usage [--json] [--provider p] [--refresh]
   health   print service and provider health [--json]
   mcp      run the read-only MCP server on stdio
+  help     print this message
 `
 
 var commands = map[string]func(ctx context.Context, args []string) error{
@@ -42,6 +43,11 @@ func run(args []string) int {
 		fmt.Fprint(os.Stderr, usageText)
 		return 2
 	}
+	switch args[0] {
+	case "help", "-h", "--help":
+		fmt.Print(usageText)
+		return 0
+	}
 	command, ok := commands[args[0]]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "windowseat: unknown command %q\n\n%s", args[0], usageText)
@@ -52,7 +58,7 @@ func run(args []string) int {
 	defer stop()
 	if err := command(ctx, args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			return 2
+			return 0
 		}
 		fmt.Fprintln(os.Stderr, "windowseat:", err)
 		return 1
