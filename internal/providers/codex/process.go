@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os/exec"
 	"time"
+
+	"windowseat/internal/providers/command"
 )
 
 const stopGrace = 2 * time.Second
@@ -20,6 +22,7 @@ func runAppServer(ctx context.Context, path string) (json.RawMessage, error) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, path, "-s", "read-only", "-a", "never", "app-server")
+	command.KillTreeOnCancel(cmd)
 	cmd.WaitDelay = stopGrace
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

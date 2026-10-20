@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"windowseat/internal/providers/command"
 )
 
 var usageArgs = []string{
@@ -27,6 +29,7 @@ const waitAfterCancel = 5 * time.Second
 
 func runUsageCommand(ctx context.Context, commandPath string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, commandPath, usageArgs...)
+	command.KillTreeOnCancel(cmd)
 	cmd.Dir = os.TempDir()
 	cmd.Env = childEnvironment(os.Environ())
 	cmd.Stderr = io.Discard

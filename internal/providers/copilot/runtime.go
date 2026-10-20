@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"strconv"
 	"time"
+
+	"windowseat/internal/providers/command"
 )
 
 // method is a JSON-RPC method this adapter may send to the Copilot runtime.
@@ -67,7 +69,7 @@ type runtime struct {
 // passed through untouched.
 func startRuntime(ctx context.Context, path string) (*runtime, error) {
 	process := exec.CommandContext(ctx, path, runtimeArgs...)
-	killProcessTreeOnCancel(process)
+	command.KillTreeOnCancel(process)
 	process.WaitDelay = stopGracePeriod
 	stdin, err := process.StdinPipe()
 	if err != nil {
