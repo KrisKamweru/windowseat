@@ -175,6 +175,12 @@ func TestSpendingAnyQuotaFailsClosed(t *testing.T) {
 		"not a local command": func(_, result map[string]any) {
 			delete(result, "local_command")
 		},
+		"assistant output tokens": func(assistant, _ map[string]any) { messageUsage(assistant)["output_tokens"] = 3.0 },
+		"assistant cache tokens":  func(assistant, _ map[string]any) { messageUsage(assistant)["cache_read_input_tokens"] = 900.0 },
+		"model reply without report": func(assistant, _ map[string]any) {
+			delete(assistant, "usage_report")
+			assistant["message"].(map[string]any)["model"] = "claude-opus-4-5"
+		},
 	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {
@@ -342,6 +348,10 @@ func mutateFixture(t *testing.T, mutate func(assistant, result map[string]any)) 
 		out.Write(append(encoded, '\n'))
 	}
 	return out.Bytes()
+}
+
+func messageUsage(assistant map[string]any) map[string]any {
+	return assistant["message"].(map[string]any)["usage"].(map[string]any)
 }
 
 func rateLimits(assistant map[string]any) map[string]any {

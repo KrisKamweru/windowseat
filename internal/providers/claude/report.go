@@ -20,6 +20,10 @@ type streamEvent struct {
 	Usage        tokenUsage   `json:"usage"`
 	Result       string       `json:"result"`
 	LocalCommand string       `json:"local_command"`
+	Message      struct {
+		Model string     `json:"model"`
+		Usage tokenUsage `json:"usage"`
+	} `json:"message"`
 }
 
 type tokenUsage struct {
@@ -28,6 +32,13 @@ type tokenUsage struct {
 	CacheCreationInputTokens float64 `json:"cache_creation_input_tokens"`
 	CacheReadInputTokens     float64 `json:"cache_read_input_tokens"`
 }
+
+func (u tokenUsage) isZero() bool {
+	return u == tokenUsage{}
+}
+
+// syntheticModel marks assistant messages claude writes locally, without calling a model.
+const syntheticModel = "<synthetic>"
 
 type usageReport struct {
 	RateLimits *struct {
@@ -41,13 +52,13 @@ type usageReport struct {
 var authWording = []string{"not logged in", "/login", "log in", "invalid api key", "authentication"}
 
 // parseUsageReport reads the claude_usage_report_2_1_304 stream: one assistant
-// event carrying usage_report, then a result event proving nothing was spent.
+// event carrying usage_report, then a result event, none of them showing spend.
 func parseUsageReport(output []byte, observedAt time.Time) (reading, *failure) {
-	report, result, fail := splitStream(output)
+	report, result, spent, fail := splitStream(output)
 	if fail != nil {
 		return reading{}, fail
 	}
-	if result.spentQuota() {
+	if spent {
 		return reading{}, &safetyCheckFailed
 	}
 	if result.IsError {
@@ -68,9 +79,7 @@ func parseUsageReport(output []byte, observedAt time.Time) (reading, *failure) {
 	return readLimits(report.RateLimits.Limits, report.RateLimits.ExtraUsage, observedAt)
 }
 
-func splitStream(output []byte) (*usageReport, *streamEvent, *failure) {
-	var report *usageReport
-	var result *streamEvent
+func splitStream(output []byte) (report *usageReport, result *streamEvent, spent bool, fail *failure) {
 	decoder := json.NewDecoder(bytes.NewReader(output))
 	for {
 		var event streamEvent
@@ -79,8 +88,9 @@ func splitStream(output []byte) (*usageReport, *streamEvent, *failure) {
 			break
 		}
 		if err != nil {
-			return nil, nil, &streamUnreadable
+			return nil, nil, false, &streamUnreadable
 		}
+		spent = spent || event.spentQuota()
 		switch {
 		case event.Type == "assistant" && event.UsageReport != nil:
 			report = event.UsageReport
@@ -89,16 +99,29 @@ func splitStream(output []byte) (*usageReport, *streamEvent, *failure) {
 		}
 	}
 	if result == nil {
-		return nil, nil, &resultMissing
+		return nil, nil, false, &resultMissing
 	}
-	return report, result, nil
+	return report, result, spent, nil
 }
 
+// spentQuota reports whether an event shows a model call: tokens or cost on
+// the result, tokens on an assistant message, or a real model's reply.
 func (e streamEvent) spentQuota() bool {
-	usage := e.Usage
-	return e.NumTurns != 0 || e.TotalCostUSD != 0 ||
-		usage.InputTokens != 0 || usage.OutputTokens != 0 ||
-		usage.CacheCreationInputTokens != 0 || usage.CacheReadInputTokens != 0
+	switch e.Type {
+	case "result":
+		return e.NumTurns != 0 || e.TotalCostUSD != 0 || !e.Usage.isZero()
+	case "assistant":
+		return e.isModelReply() || !e.Message.Usage.isZero()
+	default:
+		return false
+	}
+}
+
+// isModelReply reports an assistant message a real model wrote instead of
+// the local /usage command.
+func (e streamEvent) isModelReply() bool {
+	model := e.Message.Model
+	return e.UsageReport == nil && model != "" && model != syntheticModel
 }
 
 func (e streamEvent) mentionsAuth() bool {
