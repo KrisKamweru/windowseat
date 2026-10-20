@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -311,5 +312,50 @@ func TestClosedServiceStartsNoReads(t *testing.T) {
 	}
 	if codex.reads.Load() != 0 {
 		t.Fatalf("reads = %d, want none after Close", codex.reads.Load())
+	}
+}
+
+func TestRunRearmsWhenARefreshBringsAResetForward(t *testing.T) {
+	var soon atomic.Bool
+	codex := &fakeReader{
+		provider: contracts.ProviderCodex,
+		next: func() contracts.ProviderSnapshot {
+			now := time.Now()
+			if soon.Load() {
+				return reading(contracts.ProviderCodex, now, time.Hour, now.Add(50*time.Millisecond))
+			}
+			return reading(contracts.ProviderCodex, now, time.Hour, now.Add(time.Hour))
+		},
+	}
+	svc := New(Options{Readers: []providers.Reader{codex}, MinReadInterval: time.Millisecond})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = svc.Run(ctx) }()
+	waitFor(t, func() bool { return codex.reads.Load() == 1 })
+
+	soon.Store(true)
+	time.Sleep(5 * time.Millisecond)
+	if err := svc.Refresh(ctx, contracts.ProviderCodex); err != nil {
+		t.Fatal(err)
+	}
+
+	waitFor(t, func() bool { return codex.reads.Load() >= 3 })
+}
+
+func TestCloseStopsRun(t *testing.T) {
+	c := &clock{now: t0}
+	svc := New(Options{Readers: []providers.Reader{codexReader(c)}, MinReadInterval: time.Millisecond, Now: c.Now})
+	ran := make(chan struct{})
+	go func() {
+		_ = svc.Run(context.Background())
+		close(ran)
+	}()
+
+	svc.Close()
+
+	select {
+	case <-ran:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run kept scheduling reads after Close")
 	}
 }

@@ -47,12 +47,14 @@ type Service struct {
 	persistMu   sync.Mutex
 }
 
-// slot serialises reads for one provider.
+// slot serialises reads for one provider. changed wakes the scheduler
+// whenever a read updates the entry, so it can recompute its deadline.
 type slot struct {
 	reader   providers.Reader
 	mu       sync.Mutex
 	entry    entry
 	inflight chan struct{}
+	changed  chan struct{}
 }
 
 func (s *slot) current() entry {
@@ -83,7 +85,7 @@ func New(opts Options) *Service {
 	}
 	saved := s.store.load()
 	for _, reader := range opts.Readers {
-		sl := &slot{reader: reader}
+		sl := &slot{reader: reader, changed: make(chan struct{}, 1)}
 		if snapshot, ok := saved[reader.Provider()]; ok {
 			sl.entry = restore(snapshot)
 		}
@@ -108,7 +110,8 @@ func (s *Service) Run(ctx context.Context) error {
 	return nil
 }
 
-// Close cancels in-flight reads, waits for them to finish, and refuses new ones.
+// Close stops the schedule, cancels in-flight reads, waits for them to
+// finish, and refuses new ones.
 func (s *Service) Close() {
 	s.stop()
 	for _, sl := range s.slots {
@@ -128,6 +131,11 @@ func (s *Service) schedule(ctx context.Context, sl *slot) {
 		case <-ctx.Done():
 			timer.Stop()
 			return
+		case <-s.lifetime.Done():
+			timer.Stop()
+			return
+		case <-sl.changed:
+			timer.Stop()
 		case <-timer.C:
 			_ = s.refresh(ctx, sl)
 		}
@@ -206,6 +214,10 @@ func (s *Service) read(sl *slot, done chan struct{}) {
 		sl.entry = record(sl.entry, result, at)
 		sl.mu.Unlock()
 		s.persist()
+		select {
+		case sl.changed <- struct{}{}:
+		default:
+		}
 	}
 
 	sl.mu.Lock()

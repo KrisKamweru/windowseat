@@ -14,11 +14,11 @@ import (
 )
 
 // monitor asks the running service and falls back to reading providers in
-// this process when no service is listening.
+// this process while no service is listening.
 type monitor struct {
 	remote   *ipc.Client
 	newLocal func() *service.Service
-	once     sync.Once
+	mu       sync.Mutex
 	svc      *service.Service
 }
 
@@ -44,15 +44,23 @@ func newMonitor(ctx context.Context, only contracts.Provider, keepFresh bool) (*
 }
 
 func (m *monitor) local() *service.Service {
-	m.once.Do(func() { m.svc = m.newLocal() })
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.svc == nil {
+		m.svc = m.newLocal()
+	}
 	return m.svc
 }
 
-// Close stops any provider reads this process started, so none outlive it.
+// Close stops any provider reads this process started, so none outlive it
+// or duplicate the service's own reads.
 func (m *monitor) Close() {
-	m.once.Do(func() {})
-	if m.svc != nil {
-		m.svc.Close()
+	m.mu.Lock()
+	svc := m.svc
+	m.svc = nil
+	m.mu.Unlock()
+	if svc != nil {
+		svc.Close()
 	}
 }
 
@@ -93,5 +101,6 @@ func fallback[T any](m *monitor, remote func() (T, error), local func(*service.S
 	if errors.Is(err, ipc.ErrNotRunning) {
 		return local(m.local())
 	}
+	m.Close()
 	return result, err
 }
