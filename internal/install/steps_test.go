@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -68,7 +69,7 @@ func TestCopyFileReplacesTarget(t *testing.T) {
 	if err != nil || string(data) != "new" {
 		t.Fatalf("target = %q, %v", data, err)
 	}
-	if info, _ := os.Stat(to); info.Mode().Perm()&0o100 == 0 {
+	if info, _ := os.Stat(to); runtime.GOOS != "windows" && info.Mode().Perm()&0o100 == 0 {
 		t.Errorf("target mode %v is not executable", info.Mode())
 	}
 	if entries, _ := os.ReadDir(filepath.Dir(to)); len(entries) != 1 {

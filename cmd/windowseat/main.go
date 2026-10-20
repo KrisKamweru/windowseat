@@ -26,7 +26,7 @@ commands:
   usage      print provider usage [--json] [--provider p] [--refresh]
   health     print service and provider health [--json]
   mcp        run the read-only MCP server on stdio
-  install    start the service and tray at login [--no-tray] [--dry-run]
+  install    start the service and tray at login [--no-tray] [--add-to-path] [--dry-run]
   uninstall  remove what install added [--dry-run]
   help       print this message
 `

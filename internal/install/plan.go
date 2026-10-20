@@ -6,6 +6,7 @@
 package install
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -30,7 +31,8 @@ type Env struct {
 }
 
 type Options struct {
-	NoTray bool
+	NoTray    bool
+	AddToPath bool // Windows only
 }
 
 // Plan is the ordered work for one command, plus notes to print at the end.
@@ -42,6 +44,9 @@ type Plan struct {
 func InstallPlan(env Env, opts Options) (Plan, error) {
 	if !opts.NoTray && !env.TrayBuilt {
 		return Plan{}, fmt.Errorf("%s is missing; build it or pass --no-tray", filepath.Join(env.SourceDir, env.exe("windowseat-tray")))
+	}
+	if opts.AddToPath && env.OS != "windows" {
+		return Plan{}, errors.New("--add-to-path is Windows-only")
 	}
 	switch env.OS {
 	case "linux":

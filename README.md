@@ -74,7 +74,7 @@ Running `install` again upgrades in place. It stops the old copies before it rep
 | Windows | `%LOCALAPPDATA%\Programs\Windowseat` | Task Scheduler logon tasks `Windowseat` and `Windowseat Tray` |
 | macOS | `~/Library/Application Support/Windowseat/bin` | LaunchAgents `dev.windowseat.service` and `dev.windowseat.tray` |
 
-On Linux the tray starts right away only if you ran `install` inside a graphical session. Otherwise it starts at your next graphical login. On Windows, `install` leaves your PATH alone and prints the folder to add if you want `windowseat` in a terminal.
+On Linux the tray starts right away only if you ran `install` inside a graphical session. Otherwise it starts at your next graphical login. On Windows, add `--add-to-path` to put the install folder on your user PATH, so `windowseat` works in any new terminal. `uninstall` takes it off again.
 
 `uninstall` also deletes the saved snapshot and the service socket. It never touches Claude, Codex or Copilot files.
 

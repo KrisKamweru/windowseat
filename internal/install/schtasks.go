@@ -34,6 +34,9 @@ func schtasksInstall(env Env, opts Options) Plan {
 		steps = append(steps, command{args: schtasks("/End", t.name), mayFail: true})
 	}
 	steps = append(steps, copyBinaries(env, dir, env.binaries(opts)...)...)
+	if opts.AddToPath {
+		steps = append(steps, addToUserPath{dir: dir})
+	}
 	for _, t := range tasks {
 		xml := taskXML(env.User, filepath.Join(dir, t.binary), t.args)
 		steps = append(steps, registerTask{name: t.name, xml: xml, tempDir: env.TempDir})
@@ -41,7 +44,10 @@ func schtasksInstall(env Env, opts Options) Plan {
 	for _, t := range tasks {
 		steps = append(steps, command{args: schtasks("/Run", t.name)})
 	}
-	note := fmt.Sprintf("To run windowseat from a terminal, add %s to your PATH.", dir)
+	if opts.AddToPath {
+		return Plan{Steps: steps, Notes: []string{"Open a new terminal to run windowseat from anywhere."}}
+	}
+	note := fmt.Sprintf("To run windowseat from a terminal, install again with --add-to-path or add %s to your PATH.", dir)
 	return Plan{Steps: steps, Notes: []string{note}}
 }
 
@@ -61,7 +67,11 @@ func schtasksUninstall(env Env) Plan {
 	} else {
 		steps = append(steps, removeFile{path: service})
 	}
-	steps = append(steps, removeFile{path: filepath.Join(dir, trayTask.binary)}, removeEmptyDir{path: dir})
+	steps = append(steps,
+		removeFile{path: filepath.Join(dir, trayTask.binary)},
+		removeEmptyDir{path: dir},
+		removeFromUserPath{dir: dir},
+	)
 	return Plan{Steps: append(steps, removeState(env)...)}
 }
 

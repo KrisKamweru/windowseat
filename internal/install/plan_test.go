@@ -3,6 +3,7 @@ package install
 import (
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,14 @@ func darwinEnv() Env {
 	}
 }
 
+// needsSlashPaths skips a test whose expected paths are written with forward
+// slashes, which filepath.Join on a Windows host would not produce.
+func needsSlashPaths(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("expected paths use forward slashes")
+	}
+}
+
 func descriptions(plan Plan) []string {
 	lines := make([]string, len(plan.Steps))
 	for i, step := range plan.Steps {
@@ -75,6 +84,7 @@ func findStep[T Step](t *testing.T, plan Plan, match func(T) bool) T {
 }
 
 func TestLinuxInstallPlan(t *testing.T) {
+	needsSlashPaths(t)
 	plan, err := InstallPlan(linuxEnv(), Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -179,6 +189,7 @@ func TestInstallRejectsUnsupportedOS(t *testing.T) {
 }
 
 func TestLinuxUninstallPlan(t *testing.T) {
+	needsSlashPaths(t)
 	plan, err := UninstallPlan(linuxEnv())
 	if err != nil {
 		t.Fatal(err)
@@ -315,6 +326,7 @@ func TestWindowsUninstallPlan(t *testing.T) {
 		moveAside{from: filepath.Join(dir, "windowseat.exe"), to: filepath.Join(env.TempDir, "windowseat-uninstalled.exe")},
 		removeFile{path: filepath.Join(dir, "windowseat-tray.exe")},
 		removeEmptyDir{path: dir},
+		removeFromUserPath{dir: dir},
 		removeDir{path: env.StateDir},
 	}
 	if !reflect.DeepEqual(plan.Steps, want) {
@@ -335,6 +347,7 @@ func TestWindowsUninstallFromAnotherCopyDeletesInstalledBinary(t *testing.T) {
 }
 
 func TestDarwinInstallPlan(t *testing.T) {
+	needsSlashPaths(t)
 	plan, err := InstallPlan(darwinEnv(), Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -376,6 +389,7 @@ func TestLaunchAgent(t *testing.T) {
 }
 
 func TestDarwinUninstallPlan(t *testing.T) {
+	needsSlashPaths(t)
 	plan, err := UninstallPlan(darwinEnv())
 	if err != nil {
 		t.Fatal(err)
