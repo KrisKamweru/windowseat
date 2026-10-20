@@ -58,6 +58,14 @@ dist/linux-amd64/windowseat install --dry-run   # print the steps, change nothin
 windowseat uninstall                            # undo all of it; also takes --dry-run
 ```
 
+On Windows, run it from PowerShell in the folder that holds both `.exe` files. PowerShell needs the `.\` prefix to run a program from the current folder:
+
+```powershell
+.\windowseat.exe install
+.\windowseat.exe install --no-tray
+& "$env:LOCALAPPDATA\Programs\Windowseat\windowseat.exe" uninstall
+```
+
 Running `install` again upgrades in place. It stops the old copies before it replaces them.
 
 | Platform | Binaries | Starts at login through |
