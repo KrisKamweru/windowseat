@@ -322,7 +322,7 @@ func (s FreshnessState) valid() bool {
 
 func (s SourceName) valid() bool {
 	switch s {
-	case SourceClaudeStatusLine, SourceClaudePTYUsage, SourceCodexAppServer, SourceCopilotSDK:
+	case SourceClaudeStatusLine, SourceClaudeUsageReport, SourceCodexAppServer, SourceCopilotSDK:
 		return true
 	default:
 		return false

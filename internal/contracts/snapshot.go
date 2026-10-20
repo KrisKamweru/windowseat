@@ -45,10 +45,10 @@ const (
 type SourceName string
 
 const (
-	SourceClaudeStatusLine SourceName = "claude_status_line"
-	SourceClaudePTYUsage   SourceName = "claude_pty_usage"
-	SourceCodexAppServer   SourceName = "codex_app_server"
-	SourceCopilotSDK       SourceName = "copilot_sdk"
+	SourceClaudeStatusLine  SourceName = "claude_status_line"
+	SourceClaudeUsageReport SourceName = "claude_usage_report"
+	SourceCodexAppServer    SourceName = "codex_app_server"
+	SourceCopilotSDK        SourceName = "copilot_sdk"
 )
 
 type MeterKind string
