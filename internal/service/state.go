@@ -124,6 +124,10 @@ func accept(provider contracts.Provider, read contracts.ProviderSnapshot, at tim
 	if err == nil {
 		return read
 	}
+	return malformed(provider, at, "invalid_snapshot", "The adapter returned a snapshot that broke the contract: "+err.Error())
+}
+
+func malformed(provider contracts.Provider, at time.Time, code, message string) contracts.ProviderSnapshot {
 	return contracts.ProviderSnapshot{
 		Provider:     provider,
 		State:        contracts.ProviderMalformedResponse,
@@ -131,12 +135,7 @@ func accept(provider contracts.Provider, read contracts.ProviderSnapshot, at tim
 		ReceivedAt:   at,
 		Freshness:    contracts.Freshness{State: contracts.FreshnessExpired, MaxAgeSeconds: defaultMaxAgeSeconds},
 		Completeness: contracts.CompletenessPartial,
-		Error: &contracts.ProviderError{
-			Code:       "invalid_snapshot",
-			Phase:      contracts.ErrorParse,
-			Message:    "The adapter returned a snapshot that broke the contract: " + err.Error(),
-			ObservedAt: at,
-		},
+		Error:        &contracts.ProviderError{Code: code, Phase: contracts.ErrorParse, Message: message, ObservedAt: at},
 	}
 }
 

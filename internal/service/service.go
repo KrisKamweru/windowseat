@@ -171,17 +171,28 @@ func (s *Service) refresh(ctx context.Context, sl *slot) error {
 // cancel a read that others are waiting for.
 func (s *Service) read(sl *slot, done chan struct{}) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
-	result := sl.reader.Read(ctx)
+	result := s.readProvider(ctx, sl.reader)
 	cancel()
 
 	at := s.now()
 	sl.mu.Lock()
-	sl.entry = record(sl.entry, accept(sl.reader.Provider(), result, at), at)
+	sl.entry = record(sl.entry, result, at)
 	sl.inflight = nil
 	sl.mu.Unlock()
 
 	s.persist()
 	close(done)
+}
+
+// readProvider turns a reader panic into a malformed_response failure so one
+// broken adapter cannot take the service down.
+func (s *Service) readProvider(ctx context.Context, reader providers.Reader) (result contracts.ProviderSnapshot) {
+	defer func() {
+		if recover() != nil {
+			result = malformed(reader.Provider(), s.now(), "reader_panicked", "The adapter failed unexpectedly while reading.")
+		}
+	}()
+	return accept(reader.Provider(), reader.Read(ctx), s.now())
 }
 
 // Snapshot returns the latest data for every provider. Providers that have

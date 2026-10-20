@@ -254,3 +254,28 @@ func waitFor(t *testing.T, condition func() bool) {
 		time.Sleep(5 * time.Millisecond)
 	}
 }
+
+func TestReaderPanicBecomesMalformedResponse(t *testing.T) {
+	c := &clock{now: t0}
+	panicking := &fakeReader{
+		provider: contracts.ProviderCodex,
+		next:     func() contracts.ProviderSnapshot { panic("reader bug") },
+	}
+	svc := newTestService(t, c, "", panicking)
+
+	snapshot, err := svc.Snapshot(context.Background())
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := snapshot.Providers[0].State; got != contracts.ProviderMalformedResponse {
+		t.Fatalf("state = %s, want malformed_response", got)
+	}
+	c.Advance(time.Minute)
+	if err := svc.Refresh(context.Background(), contracts.ProviderCodex); err != nil {
+		t.Fatal(err)
+	}
+	if panicking.reads.Load() != 2 {
+		t.Fatalf("reads = %d, want a second read after the panic", panicking.reads.Load())
+	}
+}
