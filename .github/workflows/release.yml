@@ -1,0 +1,90 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: VERSION="${GITHUB_REF_NAME#v}" scripts/build.sh linux/amd64 windows/amd64 windows/arm64
+      # Archived here because artifact uploads drop the executable bit.
+      - name: Archive Linux build
+        run: |
+          name="windowseat-${GITHUB_REF_NAME#v}-linux-amd64"
+          mkdir -p "stage/$name" release
+          cp dist/linux-amd64/* LICENSE README.md "stage/$name/"
+          tar -czf "release/$name.tar.gz" -C stage "$name"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: release/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: |
+            dist/windows-amd64
+            dist/windows-arm64
+
+  windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist
+      # PLACEHOLDER: sign dist/windows-*/*.exe with SignPath here, before they
+      # are zipped and packed into the setup wizards.
+      # - uses: signpath/github-action-submit-signing-request@v1
+      #   with: ...
+      - name: Install Inno Setup
+        run: choco upgrade innosetup -y --no-progress
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          New-Item -ItemType Directory -Force release | Out-Null
+          foreach ($arch in 'amd64', 'arm64') {
+            Compress-Archive -Path "dist/windows-$arch/*.exe", LICENSE, README.md -DestinationPath "release/windowseat-$version-windows-$arch.zip"
+            & $iscc /Q "/DAppVersion=$version" "/DArch=$arch" installer\windows\windowseat.iss
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          Move-Item dist/*-setup.exe release/
+      # PLACEHOLDER: sign release/*-setup.exe with SignPath here.
+      # - uses: signpath/github-action-submit-signing-request@v1
+      #   with: ...
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: release/
+
+  publish:
+    needs: [build, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release
+      - name: Write checksums
+        working-directory: release
+        run: sha256sum * > SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --title "Windowseat $GITHUB_REF_NAME" --generate-notes
