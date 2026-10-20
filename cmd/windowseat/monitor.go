@@ -16,8 +16,10 @@ import (
 // monitor asks the running service and falls back to reading providers in
 // this process when no service is listening.
 type monitor struct {
-	remote *ipc.Client
-	local  func() *service.Service
+	remote   *ipc.Client
+	newLocal func() *service.Service
+	once     sync.Once
+	svc      *service.Service
 }
 
 // newMonitor builds a monitor. only limits direct reads to one provider.
@@ -30,15 +32,28 @@ func newMonitor(ctx context.Context, only contracts.Provider, keepFresh bool) (*
 	}
 	return &monitor{
 		remote: ipc.NewClient(addr),
-		local: sync.OnceValue(func() *service.Service {
+		newLocal: func() *service.Service {
 			fmt.Fprintln(os.Stderr, "windowseat: service not running; reading providers directly")
 			svc := service.New(service.Options{Readers: readersFor(only), Version: version})
 			if keepFresh {
 				go func() { _ = svc.Run(ctx) }()
 			}
 			return svc
-		}),
+		},
 	}, nil
+}
+
+func (m *monitor) local() *service.Service {
+	m.once.Do(func() { m.svc = m.newLocal() })
+	return m.svc
+}
+
+// Close stops any provider reads this process started, so none outlive it.
+func (m *monitor) Close() {
+	m.once.Do(func() {})
+	if m.svc != nil {
+		m.svc.Close()
+	}
 }
 
 func readersFor(only contracts.Provider) []providers.Reader {

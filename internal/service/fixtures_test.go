@@ -79,3 +79,18 @@ func (f *fakeReader) Read(context.Context) contracts.ProviderSnapshot {
 	}
 	return f.next()
 }
+
+// stubbornReader blocks until its context ends, like a provider CLI that hangs.
+type stubbornReader struct {
+	started   chan struct{}
+	cancelled atomic.Bool
+}
+
+func (r *stubbornReader) Provider() contracts.Provider { return contracts.ProviderCodex }
+
+func (r *stubbornReader) Read(ctx context.Context) contracts.ProviderSnapshot {
+	close(r.started)
+	<-ctx.Done()
+	r.cancelled.Store(true)
+	return failure(contracts.ProviderCodex, t0)
+}

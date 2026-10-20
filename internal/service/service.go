@@ -34,6 +34,10 @@ type Options struct {
 }
 
 type Service struct {
+	// lifetime ends reads when the service stops. Reads derive from it rather
+	// than from a caller, so one caller giving up cannot cancel a shared read.
+	lifetime    context.Context
+	stop        context.CancelFunc
 	slots       []*slot
 	store       *store
 	minInterval time.Duration
@@ -67,7 +71,10 @@ func New(opts Options) *Service {
 		minInterval = DefaultMinReadInterval
 	}
 
+	lifetime, stop := context.WithCancel(context.Background())
 	s := &Service{
+		lifetime:    lifetime,
+		stop:        stop,
 		store:       newStore(opts.StatePath),
 		minInterval: minInterval,
 		now:         now,
@@ -86,7 +93,8 @@ func New(opts Options) *Service {
 }
 
 // Run reads every provider now and again whenever its data reaches max age
-// or a meter resets. It returns when ctx is cancelled.
+// or a meter resets. When ctx is cancelled it closes the service and returns
+// once in-flight reads have stopped.
 func (s *Service) Run(ctx context.Context) error {
 	if len(s.slots) == 0 {
 		return ErrNoProviders
@@ -96,7 +104,21 @@ func (s *Service) Run(ctx context.Context) error {
 		wg.Go(func() { s.schedule(ctx, sl) })
 	}
 	wg.Wait()
+	s.Close()
 	return nil
+}
+
+// Close cancels in-flight reads, waits for them to finish, and refuses new ones.
+func (s *Service) Close() {
+	s.stop()
+	for _, sl := range s.slots {
+		sl.mu.Lock()
+		done := sl.inflight
+		sl.mu.Unlock()
+		if done != nil {
+			<-done
+		}
+	}
 }
 
 func (s *Service) schedule(ctx context.Context, sl *slot) {
@@ -149,6 +171,10 @@ func (s *Service) refresh(ctx context.Context, sl *slot) error {
 	sl.mu.Lock()
 	done := sl.inflight
 	if done == nil {
+		if err := s.lifetime.Err(); err != nil {
+			sl.mu.Unlock()
+			return err
+		}
 		if !shouldRead(sl.entry, s.now(), s.minInterval) {
 			sl.mu.Unlock()
 			return nil
@@ -167,20 +193,24 @@ func (s *Service) refresh(ctx context.Context, sl *slot) error {
 	}
 }
 
-// read runs detached from any caller so that one impatient client cannot
-// cancel a read that others are waiting for.
+// read runs detached from any caller. A read cut short because the service
+// is stopping says nothing about the provider, so it is not recorded.
 func (s *Service) read(sl *slot, done chan struct{}) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultReadTimeout)
+	ctx, cancel := context.WithTimeout(s.lifetime, defaultReadTimeout)
 	result := s.readProvider(ctx, sl.reader)
 	cancel()
 
-	at := s.now()
+	if s.lifetime.Err() == nil {
+		at := s.now()
+		sl.mu.Lock()
+		sl.entry = record(sl.entry, result, at)
+		sl.mu.Unlock()
+		s.persist()
+	}
+
 	sl.mu.Lock()
-	sl.entry = record(sl.entry, result, at)
 	sl.inflight = nil
 	sl.mu.Unlock()
-
-	s.persist()
 	close(done)
 }
 

@@ -279,3 +279,37 @@ func TestReaderPanicBecomesMalformedResponse(t *testing.T) {
 		t.Fatalf("reads = %d, want a second read after the panic", panicking.reads.Load())
 	}
 }
+
+func TestRunStopsInFlightReadsBeforeReturning(t *testing.T) {
+	hanging := &stubbornReader{started: make(chan struct{})}
+	svc := New(Options{Readers: []providers.Reader{hanging}})
+	ctx, cancel := context.WithCancel(context.Background())
+	ran := make(chan struct{})
+	go func() {
+		_ = svc.Run(ctx)
+		close(ran)
+	}()
+	<-hanging.started
+
+	cancel()
+	<-ran
+
+	if !hanging.cancelled.Load() {
+		t.Fatal("Run returned while a provider read was still running")
+	}
+}
+
+func TestClosedServiceStartsNoReads(t *testing.T) {
+	c := &clock{now: t0}
+	codex := codexReader(c)
+	svc := newTestService(t, c, "", codex)
+
+	svc.Close()
+
+	if err := svc.Refresh(context.Background(), ""); err == nil {
+		t.Fatal("expected refresh on a closed service to fail")
+	}
+	if codex.reads.Load() != 0 {
+		t.Fatalf("reads = %d, want none after Close", codex.reads.Load())
+	}
+}

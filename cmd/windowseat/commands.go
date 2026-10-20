@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
@@ -34,8 +35,14 @@ func serve(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	go func() { _ = svc.Run(ctx) }()
-	return ipc.Serve(ctx, ln, svc)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ran := make(chan error, 1)
+	go func() { ran <- svc.Run(ctx) }()
+	served := ipc.Serve(ctx, ln, svc)
+	cancel()
+	return errors.Join(served, <-ran)
 }
 
 func usage(ctx context.Context, args []string) error {
@@ -55,6 +62,7 @@ func usage(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer m.Close()
 	if *refresh {
 		if err := m.Refresh(ctx, provider); err != nil {
 			return err
@@ -88,6 +96,7 @@ func health(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer m.Close()
 	report, err := m.Health(ctx)
 	if err != nil {
 		return err
