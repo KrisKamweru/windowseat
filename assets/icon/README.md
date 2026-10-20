@@ -1,7 +1,14 @@
 # Icons
 
-The icon is a plane window with a gauge inside. Codex image generation drew `source/windowseat-master.png`.
+`windowseat.svg` is the source: a plane window (rounded rect) with a gauge inside (arc, needle, hub). Codex image generation drew the design. It was traced to SVG, then redrawn as four shapes fitted to the trace.
 
-`render.py` snaps every pixel of the master to navy, paper or teal, then swaps the teal arc for each state colour: blue for ok, orange for warning, grey for stale and pink for error. It writes PNGs at 16, 32, 64 and 256px, a 16/32/48 `.ico` per state, and `favicon.ico`. The tray embeds `state-*-64.png` on Linux and macOS and `state-*.ico` on Windows.
+The teal arc, `#18B9AC`, is the only colour that changes. `render` swaps it for each state: blue for ok, orange for warning, grey for stale and pink for error. It writes PNGs at 16, 32, 64 and 256px, a 16/32/48 `.ico` per state, and `favicon.ico`. The tray embeds `state-*-64.png` on Linux and macOS and `state-*.ico` on Windows.
 
-Regenerate with `python3 assets/icon/render.py`, then run `go generate ./cmd/...` so the Windows executables pick up the new icon.
+After editing the SVG, run these from the repository root:
+
+```sh
+go run ./assets/icon/render
+go generate ./cmd/...
+```
+
+The second command rebuilds the icon and version resources inside the Windows executables.
