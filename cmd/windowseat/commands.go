@@ -109,7 +109,8 @@ func health(ctx context.Context, args []string) error {
 	return nil
 }
 
-// runMCP serves MCP on stdio and returns when the client closes stdin.
+// runMCP serves MCP on stdio. When the client closes stdin it answers the
+// requests already received, then returns.
 func runMCP(ctx context.Context, args []string) error {
 	if err := newFlags("mcp").Parse(args); err != nil {
 		return err
@@ -121,5 +122,6 @@ func runMCP(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	return mcpbridge.NewServer(m, version).Run(ctx, &mcp.StdioTransport{})
+	defer m.Close()
+	return mcpbridge.NewServer(m, version).Run(ctx, mcpbridge.Draining(&mcp.StdioTransport{}))
 }
