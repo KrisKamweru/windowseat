@@ -4,6 +4,16 @@ Windowseat shows how much quota you have left on Claude Code, Codex and GitHub C
 
 It only reads. It never decides whether an agent should keep working, never switches accounts and never spends a reset credit.
 
+## Why this exists
+
+Claude Code, Codex and Copilot each track their own limits. Checking them separately is a chore, and coding agents need a way to read those limits too. Knowing how much quota remains helps you judge whether to start a long task.
+
+Other monitors already solve parts of this. CodexBar has a mature macOS menu bar and a usage CLI. agent-usage-monitor exposes quota through MCP. But none of the reviewed projects combined a shared service, MCP access and a tray on Windows and Linux while keeping provider credentials out of the monitor. Several read OAuth tokens to fetch usage. Others rely on local transcripts, which alone cannot tell you how much account quota remains. A quota display should not need your token.
+
+Windowseat asks each provider's own CLI for its quota numbers. The provider CLI handles sign-in. Windowseat never opens credential files or keychains. A local service caches the readings for the CLI, MCP server and tray, so each client doesn't need its own provider poll. When a read fails, Windowseat marks the last good reading as stale instead of pretending usage is zero.
+
+Windowseat exists to give people and agents the same view of the quota left. You and your agents decide what to do with that information.
+
 ## What it runs
 
 - `windowseat serve` keeps a cached reading of every provider and refreshes it on a schedule.
