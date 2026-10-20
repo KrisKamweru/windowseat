@@ -138,6 +138,10 @@ func TestNextReadIn(t *testing.T) {
 	fresh := record(entry{}, reading(contracts.ProviderCodex, t0, 5*time.Minute, t0.Add(2*time.Hour)), t0)
 	resetSoon := record(entry{}, reading(contracts.ProviderCodex, t0, 5*time.Minute, t0.Add(2*time.Minute)), t0)
 	resetPassed := record(entry{}, reading(contracts.ProviderCodex, t0, 5*time.Minute, t0.Add(time.Second)), t0)
+	failedBeforeReset := record(
+		record(entry{}, reading(contracts.ProviderCodex, t0, 5*time.Minute, t0.Add(3*time.Minute)), t0),
+		failure(contracts.ProviderCodex, t0.Add(30*time.Second)), t0.Add(30*time.Second))
+	failedAfterReset := record(resetPassed, failure(contracts.ProviderCodex, t0.Add(time.Minute)), t0.Add(time.Minute))
 
 	tests := []struct {
 		name string
@@ -151,6 +155,8 @@ func TestNextReadIn(t *testing.T) {
 		{"overdue", fresh, t0.Add(time.Hour), 0},
 		{"reset before max age", resetSoon, t0, 2 * time.Minute},
 		{"never sooner than min interval", resetPassed, t0, time.Minute},
+		{"failed read still waits for the last reading's reset", failedBeforeReset, t0.Add(30 * time.Second), 150 * time.Second},
+		{"failed read after the reset waits for the failure's max age", failedAfterReset, t0.Add(time.Minute), 5 * time.Minute},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

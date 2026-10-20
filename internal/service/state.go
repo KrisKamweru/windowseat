@@ -79,21 +79,29 @@ func freshness(reading contracts.ProviderSnapshot, now time.Time) contracts.Fres
 }
 
 // nextReadIn is how long to wait before the scheduled read: when the newest
-// result reaches its max age or a meter resets, but never sooner than
-// minInterval after the previous attempt.
+// result reaches its max age or a meter of the last valid reading resets, but
+// never sooner than minInterval after the previous attempt.
 func nextReadIn(e entry, now time.Time, minInterval time.Duration) time.Duration {
 	if !e.known() || e.attemptedAt.IsZero() {
 		return 0
 	}
-	newest := e.newest()
-	due := e.attemptedAt.Add(maxAge(newest))
-	if reset, ok := earliestReset(newest); ok && reset.Before(due) {
+	due := e.attemptedAt.Add(maxAge(e.newest()))
+	if reset, ok := e.nextReset(); ok && reset.Before(due) {
 		due = reset
 	}
 	if earliest := e.attemptedAt.Add(minInterval); due.Before(earliest) {
 		due = earliest
 	}
 	return max(due.Sub(now), 0)
+}
+
+// nextReset is the earliest reset of the last valid reading that the last
+// attempt has not already seen pass.
+func (e entry) nextReset() (time.Time, bool) {
+	if e.lastValid == nil {
+		return time.Time{}, false
+	}
+	return earliestResetAfter(*e.lastValid, e.attemptedAt)
 }
 
 func shouldRead(e entry, now time.Time, minInterval time.Duration) bool {
@@ -143,9 +151,13 @@ func maxAge(snapshot contracts.ProviderSnapshot) time.Duration {
 }
 
 func earliestReset(snapshot contracts.ProviderSnapshot) (time.Time, bool) {
+	return earliestResetAfter(snapshot, time.Time{})
+}
+
+func earliestResetAfter(snapshot contracts.ProviderSnapshot, after time.Time) (time.Time, bool) {
 	var earliest time.Time
 	for _, meter := range snapshot.Meters {
-		if meter.Window == nil || meter.Window.ResetsAt == nil {
+		if meter.Window == nil || meter.Window.ResetsAt == nil || !meter.Window.ResetsAt.After(after) {
 			continue
 		}
 		if earliest.IsZero() || meter.Window.ResetsAt.Before(earliest) {
