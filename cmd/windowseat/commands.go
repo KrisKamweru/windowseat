@@ -17,6 +17,7 @@ func serve(ctx context.Context, args []string) error {
 	if err := newFlags("serve").Parse(args); err != nil {
 		return err
 	}
+	releaseOwnConsole()
 	addr, err := ipc.DefaultAddress()
 	if err != nil {
 		return err
