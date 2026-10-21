@@ -121,8 +121,9 @@ func (s *snapshotFields) overage() *contracts.Overage {
 }
 
 // window keeps resetDate as a reset time only when it lies in the future.
-// Runtime 1.0.78 to 1.0.80 fill it with the read time, so it is preserved
-// as raw diagnostic data instead.
+// From runtime 1.0.78 it holds the time Copilot last read its quota, so a
+// past value means the reset time is unknown, not that the read went wrong.
+// It is kept as raw diagnostic data.
 func (s *snapshotFields) window(observedAt time.Time) *contracts.TimeWindow {
 	const field = "window.resets_at"
 	raw := readField[string](s, "resetDate", field, true)
@@ -135,7 +136,6 @@ func (s *snapshotFields) window(observedAt time.Time) *contracts.TimeWindow {
 		return &contracts.TimeWindow{RawResetAt: *raw}
 	}
 	if !resetAt.After(observedAt) {
-		s.addIssue("reset_time_not_future", field, "The provider reset time was not later than the observation time.")
 		return &contracts.TimeWindow{RawResetAt: *raw}
 	}
 	return &contracts.TimeWindow{ResetsAt: &resetAt}

@@ -16,12 +16,12 @@ import (
 // with the time the quota was read.
 var recordedReadAt = time.Date(2026, 10, 20, 12, 45, 16, 0, time.UTC)
 
-func TestRecordedReadMapsToPartialSnapshot(t *testing.T) {
+func TestRecordedReadMapsToHealthySnapshot(t *testing.T) {
 	snapshot := readingSnapshot(recordedReading(t))
 
 	assertValid(t, snapshot)
-	if snapshot.State != contracts.ProviderPartial || snapshot.Completeness != contracts.CompletenessPartial {
-		t.Fatalf("state = %q, completeness = %q; want partial, partial", snapshot.State, snapshot.Completeness)
+	if snapshot.State != contracts.ProviderHealthy || snapshot.Completeness != contracts.CompletenessExact {
+		t.Fatalf("state = %q, completeness = %q; want healthy, exact", snapshot.State, snapshot.Completeness)
 	}
 	if snapshot.Freshness != (contracts.Freshness{State: contracts.FreshnessCurrent, MaxAgeSeconds: 900}) {
 		t.Fatalf("Freshness = %+v", snapshot.Freshness)
@@ -64,13 +64,8 @@ func TestRecordedReadMapsToPartialSnapshot(t *testing.T) {
 		t.Fatalf("premium window = %+v", premium.Window)
 	}
 
-	if len(snapshot.Issues) != 3 {
-		t.Fatalf("Issues = %+v, want one per meter", snapshot.Issues)
-	}
-	for _, issue := range snapshot.Issues {
-		if issue.Code != "reset_time_not_future" || issue.Field != "window.resets_at" {
-			t.Fatalf("issue = %+v", issue)
-		}
+	if len(snapshot.Issues) != 0 {
+		t.Fatalf("Issues = %+v, want none: a past resetDate is the read time, not a fault", snapshot.Issues)
 	}
 }
 

@@ -35,8 +35,8 @@ func TestReadSendsOnlyAllowedMethods(t *testing.T) {
 	snapshot := NewReader(Options{}).Read(t.Context())
 
 	assertValid(t, snapshot)
-	if snapshot.State != contracts.ProviderPartial || len(snapshot.Meters) != 3 {
-		t.Fatalf("state = %q, meters = %d; want partial with 3 meters", snapshot.State, len(snapshot.Meters))
+	if snapshot.State != contracts.ProviderHealthy || len(snapshot.Meters) != 3 {
+		t.Fatalf("state = %q, meters = %d; want healthy with 3 meters", snapshot.State, len(snapshot.Meters))
 	}
 	if snapshot.Source.RuntimeVersion != "1.0.80" || snapshot.Source.CommandVersion != "1.0.80" {
 		t.Fatalf("Source = %+v", snapshot.Source)
