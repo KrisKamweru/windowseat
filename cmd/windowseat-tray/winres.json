@@ -13,10 +13,10 @@
     "#1": {
       "0409": {
         "identity": {
-          "name": "Windowseat.windowseat-tray",
+          "name": "WindowSeat.windowseat-tray",
           "version": "0.1.0.0"
         },
-        "description": "Windowseat tray client",
+        "description": "WindowSeat tray client",
         "minimum-os": "win10",
         "execution-level": "as invoker",
         "dpi-awareness": "per monitor v2",
@@ -34,12 +34,12 @@
         "info": {
           "0409": {
             "CompanyName": "Kris Kamweru",
-            "FileDescription": "Windowseat tray client",
+            "FileDescription": "WindowSeat tray client",
             "FileVersion": "0.1.0",
             "InternalName": "windowseat-tray",
             "LegalCopyright": "Copyright (c) 2026 Kris Kamweru",
             "OriginalFilename": "windowseat-tray.exe",
-            "ProductName": "Windowseat",
+            "ProductName": "WindowSeat",
             "ProductVersion": "0.1.0"
           }
         }

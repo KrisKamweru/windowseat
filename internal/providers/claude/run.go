@@ -23,7 +23,7 @@ var usageArgs = []string{
 }
 
 // nestedSessionMarkers make claude believe it runs inside another Claude Code
-// session, which changes its behaviour when Windowseat is launched from one.
+// session, which changes its behaviour when WindowSeat is launched from one.
 var nestedSessionMarkers = []string{"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"}
 
 const waitAfterCancel = 5 * time.Second

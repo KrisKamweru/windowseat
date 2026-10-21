@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test -race ./...
+        env:
+          # The race detector needs cgo. Both runner images ship gcc.
+          CGO_ENABLED: "1"
+
+  # Compiles the setup wizard so a broken installer script fails the PR, not
+  # the release. The unsigned build is kept as an artifact for manual testing.
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: scripts/build.sh windows/amd64
+        shell: bash
+      - name: Install Inno Setup
+        run: choco upgrade innosetup -y --no-progress
+      - name: Compile setup wizard
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=0.1.0" "/DArch=amd64" installer\windows\windowseat.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup-wizard-unsigned
+          path: dist/*-setup.exe

@@ -1,4 +1,4 @@
-// Package ipc serves the Windowseat API over a user-private local endpoint:
+// Package ipc serves the WindowSeat API over a user-private local endpoint:
 // a Unix socket on Linux and macOS, a named pipe on Windows.
 package ipc
 

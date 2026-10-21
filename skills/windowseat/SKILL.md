@@ -3,9 +3,9 @@ name: windowseat
 description: Read remaining Claude Code, Codex and GitHub Copilot quota. Use when asked about usage, limits or reset times, or before starting long or parallel agent work.
 ---
 
-# Reading quota with Windowseat
+# Reading quota with WindowSeat
 
-Windowseat reports what each provider says about its own limits. It reports numbers; the person decides what to do with them.
+WindowSeat reports what each provider says about its own limits. It reports numbers; the person decides what to do with them.
 
 ## Read
 
@@ -43,7 +43,7 @@ A meter or provider that is absent is unknown. Report it as unknown, never as ze
 | copilot | `premium_interactions` | `used` of `entitlement` requests, `remaining_percentage` left | unknown |
 | copilot | `chat`, `completions` | usually `unlimited: true` | unknown |
 
-Copilot readings are always `partial` because the runtime reports the read time in place of a reset time. That time sits in `window.raw_reset_at`; treat Copilot reset times as unknown.
+Copilot gives no reset time. Its runtime reports when it last read the quota instead, and WindowSeat keeps that in `window.raw_reset_at`. Treat Copilot reset times as unknown.
 
 `issues[]` lists fields that could not be read. Mention them when they touch a meter the person asked about.
 

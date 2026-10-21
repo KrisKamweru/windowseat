@@ -23,7 +23,7 @@ type Status struct {
 	Tooltip string
 }
 
-const title = "Windowseat"
+const title = "WindowSeat"
 
 var failedStates = map[contracts.ProviderState]bool{
 	contracts.ProviderAuthRequired:       true,

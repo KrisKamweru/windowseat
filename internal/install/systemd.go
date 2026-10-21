@@ -67,7 +67,7 @@ func systemctl(args ...string) []string {
 // services with its own short PATH, which misses nvm and ~/.local/bin.
 func systemdUnit(exe, path string) string {
 	return fmt.Sprintf(`[Unit]
-Description=Windowseat AI coding quota monitor
+Description=WindowSeat AI coding quota monitor
 
 [Service]
 ExecStart=%q serve
@@ -82,7 +82,7 @@ WantedBy=default.target
 func desktopEntry(exe string) string {
 	return fmt.Sprintf(`[Desktop Entry]
 Type=Application
-Name=Windowseat
+Name=WindowSeat
 Comment=AI coding quota in the system tray
 Exec=%q
 Terminal=false

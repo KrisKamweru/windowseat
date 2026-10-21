@@ -17,7 +17,8 @@ import (
 	"windowseat/internal/contracts"
 )
 
-const version = "0.1.0-dev"
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "0.1.0-dev"
 
 const usageText = `usage: windowseat <command> [flags]
 
@@ -26,7 +27,7 @@ commands:
   usage      print provider usage [--json] [--provider p] [--refresh]
   health     print service and provider health [--json]
   mcp        run the read-only MCP server on stdio
-  install    start the service and tray at login [--no-tray] [--dry-run]
+  install    start the service and tray at login [--no-tray] [--add-to-path] [--dry-run]
   uninstall  remove what install added [--dry-run]
   help       print this message
 `

@@ -11,12 +11,15 @@ type task struct {
 }
 
 var (
-	serviceTask = task{name: "Windowseat", binary: "windowseat.exe", args: "serve"}
-	trayTask    = task{name: "Windowseat Tray", binary: "windowseat-tray.exe"}
+	serviceTask = task{name: "WindowSeat", binary: "windowseat.exe", args: "serve"}
+	trayTask    = task{name: "WindowSeat Tray", binary: "windowseat-tray.exe"}
 )
 
-func windowsDir(env Env) string {
-	return filepath.Join(env.LocalAppData, "Programs", "Windowseat")
+func windowsDir(env Env, opts Options) string {
+	if opts.Dir != "" {
+		return opts.Dir
+	}
+	return filepath.Join(env.LocalAppData, "Programs", "WindowSeat")
 }
 
 func windowsTasks(opts Options) []task {
@@ -27,13 +30,16 @@ func windowsTasks(opts Options) []task {
 }
 
 func schtasksInstall(env Env, opts Options) Plan {
-	dir := windowsDir(env)
+	dir := windowsDir(env, opts)
 	tasks := windowsTasks(opts)
 	var steps []Step
 	for _, t := range tasks {
 		steps = append(steps, command{args: schtasks("/End", t.name), mayFail: true})
 	}
 	steps = append(steps, copyBinaries(env, dir, env.binaries(opts)...)...)
+	if opts.AddToPath {
+		steps = append(steps, addToUserPath{dir: dir})
+	}
 	for _, t := range tasks {
 		xml := taskXML(env.User, filepath.Join(dir, t.binary), t.args)
 		steps = append(steps, registerTask{name: t.name, xml: xml, tempDir: env.TempDir})
@@ -41,12 +47,15 @@ func schtasksInstall(env Env, opts Options) Plan {
 	for _, t := range tasks {
 		steps = append(steps, command{args: schtasks("/Run", t.name)})
 	}
-	note := fmt.Sprintf("To run windowseat from a terminal, add %s to your PATH.", dir)
+	if opts.AddToPath {
+		return Plan{Steps: steps, Notes: []string{"Open a new terminal to run windowseat from anywhere."}}
+	}
+	note := fmt.Sprintf("To run windowseat from a terminal, install again with --add-to-path or add %s to your PATH.", dir)
 	return Plan{Steps: steps, Notes: []string{note}}
 }
 
-func schtasksUninstall(env Env) Plan {
-	dir := windowsDir(env)
+func schtasksUninstall(env Env, opts Options) Plan {
+	dir := windowsDir(env, opts)
 	var steps []Step
 	for _, t := range windowsTasks(Options{}) {
 		steps = append(steps,
@@ -61,7 +70,11 @@ func schtasksUninstall(env Env) Plan {
 	} else {
 		steps = append(steps, removeFile{path: service})
 	}
-	steps = append(steps, removeFile{path: filepath.Join(dir, trayTask.binary)}, removeEmptyDir{path: dir})
+	steps = append(steps,
+		removeFile{path: filepath.Join(dir, trayTask.binary)},
+		removeEmptyDir{path: dir},
+		removeFromUserPath{dir: dir},
+	)
 	return Plan{Steps: append(steps, removeState(env)...)}
 }
 
