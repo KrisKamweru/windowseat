@@ -9,9 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 	"unicode/utf16"
 )
 
@@ -123,7 +125,7 @@ type removeFile struct {
 func (s removeFile) String() string { return "delete " + s.path }
 
 func (s removeFile) run() error {
-	return ignoreMissing(os.Remove(s.path))
+	return deleteWithRetry(func() error { return ignoreMissing(os.Remove(s.path)) })
 }
 
 type removeDir struct {
@@ -132,7 +134,9 @@ type removeDir struct {
 
 func (s removeDir) String() string { return "delete " + s.path + " and everything in it" }
 
-func (s removeDir) run() error { return os.RemoveAll(s.path) }
+func (s removeDir) run() error {
+	return deleteWithRetry(func() error { return os.RemoveAll(s.path) })
+}
 
 type removeEmptyDir struct {
 	path string
@@ -145,7 +149,7 @@ func (s removeEmptyDir) run() error {
 	if err != nil || len(entries) > 0 {
 		return ignoreMissing(err)
 	}
-	return os.Remove(s.path)
+	return deleteWithRetry(func() error { return os.Remove(s.path) })
 }
 
 // moveAside renames a program out of the way. Windows refuses to delete a
@@ -237,6 +241,32 @@ func utf16LE(text string) []byte {
 func ignoreMissing(err error) error {
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
+	}
+	return err
+}
+
+// Windows refuses to delete a file while any program has it open. A service
+// that was just stopped, or an antivirus scan, usually lets go within moments.
+const (
+	deleteAttempts = 10
+	deleteWait     = 500 * time.Millisecond
+)
+
+func deleteWithRetry(remove func() error) error {
+	if runtime.GOOS != "windows" {
+		return remove()
+	}
+	return retryDenied(remove, deleteAttempts, deleteWait)
+}
+
+func retryDenied(remove func() error, attempts int, wait time.Duration) error {
+	err := remove()
+	for i := 1; i < attempts && errors.Is(err, fs.ErrPermission); i++ {
+		time.Sleep(wait)
+		err = remove()
+	}
+	if errors.Is(err, fs.ErrPermission) {
+		return fmt.Errorf("%w Another program still has it open, often antivirus. Windows finishes the delete once that program lets go, or after a restart", err)
 	}
 	return err
 }
