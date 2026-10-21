@@ -3,6 +3,7 @@ package install
 import (
 	"bytes"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -157,5 +158,37 @@ func writeTestFile(t *testing.T, path, data string) {
 	}
 	if err := os.WriteFile(path, []byte(data), 0o755); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRetryDeniedSucceedsOnceTheHolderLetsGo(t *testing.T) {
+	calls := 0
+	remove := func() error {
+		calls++
+		if calls < 3 {
+			return fs.ErrPermission
+		}
+		return nil
+	}
+	if err := retryDenied(remove, 5, 0); err != nil || calls != 3 {
+		t.Fatalf("err = %v after %d calls, want nil after 3", err, calls)
+	}
+}
+
+func TestRetryDeniedExplainsALastingDenial(t *testing.T) {
+	calls := 0
+	remove := func() error { calls++; return fs.ErrPermission }
+	err := retryDenied(remove, 4, 0)
+	if !errors.Is(err, fs.ErrPermission) || !strings.Contains(err.Error(), "restart") || calls != 4 {
+		t.Fatalf("err = %v after %d calls, want an explained permission error after 4", err, calls)
+	}
+}
+
+func TestRetryDeniedLeavesOtherErrorsAlone(t *testing.T) {
+	calls := 0
+	other := errors.New("disk on fire")
+	remove := func() error { calls++; return other }
+	if err := retryDenied(remove, 4, 0); err != other || calls != 1 {
+		t.Fatalf("err = %v after %d calls, want the original error after 1", err, calls)
 	}
 }
