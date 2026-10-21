@@ -183,14 +183,14 @@ func TestInstallRejectsUnsupportedOS(t *testing.T) {
 	if _, err := InstallPlan(env, Options{}); err == nil {
 		t.Error("InstallPlan accepted plan9")
 	}
-	if _, err := UninstallPlan(env); err == nil {
+	if _, err := UninstallPlan(env, Options{}); err == nil {
 		t.Error("UninstallPlan accepted plan9")
 	}
 }
 
 func TestLinuxUninstallPlan(t *testing.T) {
 	needsSlashPaths(t)
-	plan, err := UninstallPlan(linuxEnv())
+	plan, err := UninstallPlan(linuxEnv(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestLinuxUninstallPlan(t *testing.T) {
 }
 
 func TestUninstallRemovesSharedStateDirOnce(t *testing.T) {
-	plan, err := UninstallPlan(darwinEnv())
+	plan, err := UninstallPlan(darwinEnv(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,11 +227,11 @@ func TestUninstallRemovesSharedStateDirOnce(t *testing.T) {
 	}
 }
 
-func TestUninstallLeavesDirsNotNamedWindowseat(t *testing.T) {
+func TestUninstallLeavesDirsNotNamedWindowSeat(t *testing.T) {
 	env := linuxEnv()
 	env.StateDir = "/home/k/.local/state"
 	env.SocketDir = "/tmp"
-	plan, err := UninstallPlan(env)
+	plan, err := UninstallPlan(env, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,19 +248,19 @@ func TestWindowsInstallPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(env.LocalAppData, "Programs", "Windowseat")
+	dir := filepath.Join(env.LocalAppData, "Programs", "WindowSeat")
 	service := filepath.Join(dir, "windowseat.exe")
 	tray := filepath.Join(dir, "windowseat-tray.exe")
 
 	want := []Step{
-		command{args: []string{"schtasks", "/End", "/TN", "Windowseat"}, mayFail: true},
-		command{args: []string{"schtasks", "/End", "/TN", "Windowseat Tray"}, mayFail: true},
+		command{args: []string{"schtasks", "/End", "/TN", "WindowSeat"}, mayFail: true},
+		command{args: []string{"schtasks", "/End", "/TN", "WindowSeat Tray"}, mayFail: true},
 		copyFile{from: filepath.Join(env.SourceDir, "windowseat.exe"), to: service},
 		copyFile{from: filepath.Join(env.SourceDir, "windowseat-tray.exe"), to: tray},
-		registerTask{name: "Windowseat", xml: taskXML(`PC\k`, service, "serve"), tempDir: env.TempDir},
-		registerTask{name: "Windowseat Tray", xml: taskXML(`PC\k`, tray, ""), tempDir: env.TempDir},
-		command{args: []string{"schtasks", "/Run", "/TN", "Windowseat"}},
-		command{args: []string{"schtasks", "/Run", "/TN", "Windowseat Tray"}},
+		registerTask{name: "WindowSeat", xml: taskXML(`PC\k`, service, "serve"), tempDir: env.TempDir},
+		registerTask{name: "WindowSeat Tray", xml: taskXML(`PC\k`, tray, ""), tempDir: env.TempDir},
+		command{args: []string{"schtasks", "/Run", "/TN", "WindowSeat"}},
+		command{args: []string{"schtasks", "/Run", "/TN", "WindowSeat Tray"}},
 	}
 	if !reflect.DeepEqual(plan.Steps, want) {
 		t.Errorf("plan:\n%s", strings.Join(descriptions(plan), "\n"))
@@ -311,18 +311,18 @@ func TestTaskXML(t *testing.T) {
 
 func TestWindowsUninstallPlan(t *testing.T) {
 	env := windowsEnv()
-	env.Executable = filepath.Join(env.LocalAppData, "Programs", "Windowseat", "windowseat.exe")
-	plan, err := UninstallPlan(env)
+	env.Executable = filepath.Join(env.LocalAppData, "Programs", "WindowSeat", "windowseat.exe")
+	plan, err := UninstallPlan(env, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(env.LocalAppData, "Programs", "Windowseat")
+	dir := filepath.Join(env.LocalAppData, "Programs", "WindowSeat")
 
 	want := []Step{
-		command{args: []string{"schtasks", "/End", "/TN", "Windowseat"}, mayFail: true},
-		command{args: []string{"schtasks", "/Delete", "/TN", "Windowseat", "/F"}, mayFail: true},
-		command{args: []string{"schtasks", "/End", "/TN", "Windowseat Tray"}, mayFail: true},
-		command{args: []string{"schtasks", "/Delete", "/TN", "Windowseat Tray", "/F"}, mayFail: true},
+		command{args: []string{"schtasks", "/End", "/TN", "WindowSeat"}, mayFail: true},
+		command{args: []string{"schtasks", "/Delete", "/TN", "WindowSeat", "/F"}, mayFail: true},
+		command{args: []string{"schtasks", "/End", "/TN", "WindowSeat Tray"}, mayFail: true},
+		command{args: []string{"schtasks", "/Delete", "/TN", "WindowSeat Tray", "/F"}, mayFail: true},
 		moveAside{from: filepath.Join(dir, "windowseat.exe"), to: filepath.Join(env.TempDir, "windowseat-uninstalled.exe")},
 		removeFile{path: filepath.Join(dir, "windowseat-tray.exe")},
 		removeEmptyDir{path: dir},
@@ -338,11 +338,11 @@ func TestWindowsUninstallPlan(t *testing.T) {
 }
 
 func TestWindowsUninstallFromAnotherCopyDeletesInstalledBinary(t *testing.T) {
-	plan, err := UninstallPlan(windowsEnv())
+	plan, err := UninstallPlan(windowsEnv(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	installed := filepath.Join(windowsEnv().LocalAppData, "Programs", "Windowseat", "windowseat.exe")
+	installed := filepath.Join(windowsEnv().LocalAppData, "Programs", "WindowSeat", "windowseat.exe")
 	findStep(t, plan, func(s removeFile) bool { return s.path == installed })
 }
 
@@ -352,7 +352,7 @@ func TestDarwinInstallPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := "/Users/k/Library/Application Support/Windowseat/bin"
+	dir := "/Users/k/Library/Application Support/WindowSeat/bin"
 	agents := "/Users/k/Library/LaunchAgents"
 
 	want := []Step{
@@ -390,11 +390,11 @@ func TestLaunchAgent(t *testing.T) {
 
 func TestDarwinUninstallPlan(t *testing.T) {
 	needsSlashPaths(t)
-	plan, err := UninstallPlan(darwinEnv())
+	plan, err := UninstallPlan(darwinEnv(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := "/Users/k/Library/Application Support/Windowseat"
+	app := "/Users/k/Library/Application Support/WindowSeat"
 	agents := "/Users/k/Library/LaunchAgents"
 
 	want := []Step{
@@ -410,5 +410,38 @@ func TestDarwinUninstallPlan(t *testing.T) {
 	}
 	if !reflect.DeepEqual(plan.Steps, want) {
 		t.Errorf("plan:\n%s", strings.Join(descriptions(plan), "\n"))
+	}
+}
+
+func TestWindowsInstallAndUninstallUseTheChosenDir(t *testing.T) {
+	env := windowsEnv()
+	chosen := Options{Dir: `D:\Tools\WindowSeat`}
+	service := filepath.Join(chosen.Dir, "windowseat.exe")
+
+	install, err := InstallPlan(env, chosen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findStep(t, install, func(s copyFile) bool { return s.to == service })
+	findStep(t, install, func(s registerTask) bool { return s.xml == taskXML(`PC\k`, service, "serve") })
+
+	uninstall, err := UninstallPlan(env, chosen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findStep(t, uninstall, func(s removeFile) bool { return s.path == service })
+	findStep(t, uninstall, func(s removeEmptyDir) bool { return s.path == chosen.Dir })
+	findStep(t, uninstall, func(s removeFromUserPath) bool { return s.dir == chosen.Dir })
+}
+
+func TestDirIsWindowsOnlyAndAbsolute(t *testing.T) {
+	if _, err := InstallPlan(linuxEnv(), Options{Dir: "/opt/windowseat"}); err == nil {
+		t.Error("linux install accepted --dir")
+	}
+	if _, err := UninstallPlan(darwinEnv(), Options{Dir: "/opt/windowseat"}); err == nil {
+		t.Error("darwin uninstall accepted --dir")
+	}
+	if _, err := InstallPlan(windowsEnv(), Options{Dir: `Tools\WindowSeat`}); err == nil {
+		t.Error("windows install accepted a relative --dir")
 	}
 }

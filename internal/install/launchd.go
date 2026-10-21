@@ -19,7 +19,7 @@ var (
 )
 
 func macAppDir(env Env) string {
-	return filepath.Join(env.Home, "Library", "Application Support", "Windowseat")
+	return filepath.Join(env.Home, "Library", "Application Support", "WindowSeat")
 }
 
 func macAgents(opts Options) []agent {

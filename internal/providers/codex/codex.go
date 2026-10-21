@@ -21,7 +21,7 @@ const (
 	installHint            = "Install the Codex CLI and make sure `codex` is on the service user's PATH."
 	loginHint              = "Sign in with `codex login` under the service user."
 	retryHint              = "Check that `codex app-server` runs for the service user, then retry."
-	upgradeOrReportHint    = "Upgrade the Codex CLI or report the response shape to Windowseat."
+	upgradeOrReportHint    = "Upgrade the Codex CLI or report the response shape to WindowSeat."
 )
 
 type parser func(result json.RawMessage, observedAt time.Time) (reading, error)

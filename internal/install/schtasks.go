@@ -11,12 +11,15 @@ type task struct {
 }
 
 var (
-	serviceTask = task{name: "Windowseat", binary: "windowseat.exe", args: "serve"}
-	trayTask    = task{name: "Windowseat Tray", binary: "windowseat-tray.exe"}
+	serviceTask = task{name: "WindowSeat", binary: "windowseat.exe", args: "serve"}
+	trayTask    = task{name: "WindowSeat Tray", binary: "windowseat-tray.exe"}
 )
 
-func windowsDir(env Env) string {
-	return filepath.Join(env.LocalAppData, "Programs", "Windowseat")
+func windowsDir(env Env, opts Options) string {
+	if opts.Dir != "" {
+		return opts.Dir
+	}
+	return filepath.Join(env.LocalAppData, "Programs", "WindowSeat")
 }
 
 func windowsTasks(opts Options) []task {
@@ -27,7 +30,7 @@ func windowsTasks(opts Options) []task {
 }
 
 func schtasksInstall(env Env, opts Options) Plan {
-	dir := windowsDir(env)
+	dir := windowsDir(env, opts)
 	tasks := windowsTasks(opts)
 	var steps []Step
 	for _, t := range tasks {
@@ -51,8 +54,8 @@ func schtasksInstall(env Env, opts Options) Plan {
 	return Plan{Steps: steps, Notes: []string{note}}
 }
 
-func schtasksUninstall(env Env) Plan {
-	dir := windowsDir(env)
+func schtasksUninstall(env Env, opts Options) Plan {
+	dir := windowsDir(env, opts)
 	var steps []Step
 	for _, t := range windowsTasks(Options{}) {
 		steps = append(steps,

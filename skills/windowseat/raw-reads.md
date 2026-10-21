@@ -20,4 +20,4 @@ Send exactly these two requests. Take the line with `"id":2`. In `result.rateLim
 
 ## GitHub Copilot
 
-Copilot has no one-line read. Install Windowseat, or tell the person to check the quota line in the Copilot CLI footer.
+Copilot has no one-line read. Install WindowSeat, or tell the person to check the quota line in the Copilot CLI footer.

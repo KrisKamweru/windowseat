@@ -1,6 +1,6 @@
-# Windowseat
+# WindowSeat
 
-Windowseat shows how much quota you have left on Claude Code, Codex and GitHub Copilot. It asks each provider's own CLI for the numbers and reports them to you, to scripts and to coding agents.
+WindowSeat shows how much quota you have left on Claude Code, Codex and GitHub Copilot. It asks each provider's own CLI for the numbers and reports them to you, to scripts and to coding agents.
 
 It only reads. It never decides whether an agent should keep working, never switches accounts and never spends a reset credit.
 
@@ -10,9 +10,9 @@ Claude Code, Codex and Copilot each track their own limits. Checking them separa
 
 Other monitors already solve parts of this. CodexBar has a mature macOS menu bar and a usage CLI. agent-usage-monitor exposes quota through MCP. But none of the reviewed projects combined a shared service, MCP access and a tray on Windows and Linux while keeping provider credentials out of the monitor. Several read OAuth tokens to fetch usage. Others rely on local transcripts, which alone cannot tell you how much account quota remains. A quota display should not need your token.
 
-Windowseat asks each provider's own CLI for its quota numbers. The provider CLI handles sign-in. Windowseat never opens credential files or keychains. A local service caches the readings for the CLI, MCP server and tray, so each client doesn't need its own provider poll. When a read fails, Windowseat marks the last good reading as stale instead of pretending usage is zero.
+WindowSeat asks each provider's own CLI for its quota numbers. The provider CLI handles sign-in. WindowSeat never opens credential files or keychains. A local service caches the readings for the CLI, MCP server and tray, so each client doesn't need its own provider poll. When a read fails, WindowSeat marks the last good reading as stale instead of pretending usage is zero.
 
-Windowseat exists to give people and agents the same view of the quota left. You and your agents decide what to do with that information.
+WindowSeat exists to give people and agents the same view of the quota left. You and your agents decide what to do with that information.
 
 ## What it runs
 
@@ -32,9 +32,9 @@ The agent skill in [`skills/windowseat`](skills/windowseat/SKILL.md) tells an ag
 | Codex | `account/rateLimits/read` on a read-only `codex app-server` |
 | Copilot | `account.getQuota` over JSON-RPC to `copilot --headless --stdio` |
 
-Windowseat never opens credential files, keychains or tokens. Each provider CLI gets the environment unchanged and handles its own sign-in. The Codex and Copilot adapters only send methods on a fixed allowlist, so they can't reach the methods that spend reset credits or return credentials.
+WindowSeat never opens credential files, keychains or tokens. Each provider CLI gets the environment unchanged and handles its own sign-in. The Codex and Copilot adapters only send methods on a fixed allowlist, so they can't reach the methods that spend reset credits or return credentials.
 
-If a read fails, Windowseat reports the failure and keeps the last good reading marked as stale. It never shows a failed read as 0%.
+If a read fails, WindowSeat reports the failure and keeps the last good reading marked as stale. It never shows a failed read as 0%.
 
 ## Platforms
 
@@ -76,7 +76,7 @@ On Windows, run it from PowerShell in the folder that holds both `.exe` files. P
 .\windowseat.exe install
 .\windowseat.exe install --no-tray
 .\windowseat.exe install --add-to-path
-& "$env:LOCALAPPDATA\Programs\Windowseat\windowseat.exe" uninstall
+& "$env:LOCALAPPDATA\Programs\WindowSeat\windowseat.exe" uninstall
 ```
 
 Running `install` again upgrades in place. It stops the old copies before it replaces them.
@@ -84,10 +84,10 @@ Running `install` again upgrades in place. It stops the old copies before it rep
 | Platform | Binaries | Starts at login through |
 | --- | --- | --- |
 | Linux | `~/.local/bin` | `systemd --user` unit `windowseat.service`, and an XDG autostart entry for the tray |
-| Windows | `%LOCALAPPDATA%\Programs\Windowseat` | Task Scheduler logon tasks `Windowseat` and `Windowseat Tray` |
-| macOS | `~/Library/Application Support/Windowseat/bin` | LaunchAgents `dev.windowseat.service` and `dev.windowseat.tray` |
+| Windows | `%LOCALAPPDATA%\Programs\WindowSeat` | Task Scheduler logon tasks `WindowSeat` and `WindowSeat Tray` |
+| macOS | `~/Library/Application Support/WindowSeat/bin` | LaunchAgents `dev.windowseat.service` and `dev.windowseat.tray` |
 
-On Linux the tray starts right away only if you ran `install` inside a graphical session. Otherwise it starts at your next graphical login. On Windows, add `--add-to-path` to put the install folder on your user PATH, so `windowseat` works in any new terminal. `uninstall` takes it off again.
+On Linux the tray starts right away only if you ran `install` inside a graphical session. Otherwise it starts at your next graphical login. On Windows, add `--add-to-path` to put the install folder on your user PATH, so `windowseat` works in any new terminal. `uninstall` takes it off again. To install somewhere other than `%LOCALAPPDATA%\Programs\WindowSeat`, pass `--dir` with a full path, and pass the same `--dir` to `uninstall`.
 
 `uninstall` also deletes the saved snapshot and the service socket. It never touches Claude, Codex or Copilot files.
 
@@ -100,7 +100,7 @@ codex mcp add windowseat -- windowseat mcp
 
 ### Setup wizard on Windows
 
-Each release on the [Releases page](https://github.com/KrisKamweru/windowseat/releases) has a `windowseat-<version>-windows-amd64-setup.exe`, and an `arm64` one for ARM PCs. It installs for your user only and needs no admin rights. Two checkboxes, both on by default, choose whether to show the tray icon and whether to add Windowseat to your PATH. Running a newer setup upgrades in place. To remove Windowseat, uninstall it from Apps & Features in Settings.
+Each release on the [Releases page](https://github.com/KrisKamweru/windowseat/releases) has a `windowseat-<version>-windows-amd64-setup.exe`, and an `arm64` one for ARM PCs. It installs for your user only and needs no admin rights. You can pick the install folder, which defaults to `%LOCALAPPDATA%\Programs\WindowSeat`. Two checkboxes, both on by default, choose whether to show the tray icon and whether to add WindowSeat to your PATH. Running a newer setup upgrades in place. To remove WindowSeat, uninstall it from Apps & Features in Settings.
 
 ## License
 

@@ -18,26 +18,26 @@
 #endif
 
 ; Task names from internal/install/schtasks.go.
-#define ServiceTask "Windowseat"
-#define TrayTask "Windowseat Tray"
+#define ServiceTask "WindowSeat"
+#define TrayTask "WindowSeat Tray"
 
 [Setup]
 AppId={{C6D6307E-C225-4FB6-A7F9-FBE68BC8FDB1}
-AppName=Windowseat
+AppName=WindowSeat
 AppVersion={#AppVersion}
 AppPublisher=Kris Kamweru
 AppPublisherURL=https://github.com/KrisKamweru/windowseat
 PrivilegesRequired=lowest
-; windowseat install always uses this folder, so the user can't pick another.
-DefaultDirName={localappdata}\Programs\Windowseat
-DisableDirPage=yes
+; The folder page shows on a first install. Upgrades reuse the earlier folder.
+DefaultDirName={localappdata}\Programs\WindowSeat
+DisableDirPage=auto
 DisableProgramGroupPage=yes
 ArchitecturesAllowed={#InnoArch}
 ArchitecturesInstallIn64BitMode={#InnoArch}
 LicenseFile=..\..\LICENSE
 SetupIconFile=..\..\assets\icon\favicon.ico
 UninstallDisplayIcon={app}\windowseat.exe
-UninstallDisplayName=Windowseat
+UninstallDisplayName=WindowSeat
 OutputDir=..\..\dist
 OutputBaseFilename=windowseat-{#AppVersion}-windows-{#Arch}-setup
 WizardStyle=modern
@@ -46,7 +46,7 @@ RestartApplications=no
 
 [Tasks]
 Name: tray; Description: "Show the tray icon"
-Name: path; Description: "Add Windowseat to PATH"
+Name: path; Description: "Add WindowSeat to PATH"
 
 [Files]
 Source: "..\..\dist\windows-{#Arch}\windowseat.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -55,7 +55,7 @@ Source: "..\..\dist\windows-{#Arch}\windowseat-tray.exe"; DestDir: "{app}"; Flag
 [UninstallRun]
 ; Removes the tasks, PATH entry and saved state. It moves its own running exe
 ; to %TEMP% and deletes the tray exe; the uninstaller skips files already gone.
-Filename: "{app}\windowseat.exe"; Parameters: "uninstall"; Flags: runhidden waituntilterminated; RunOnceId: "WindowseatUninstall"
+Filename: "{app}\windowseat.exe"; Parameters: "uninstall --dir ""{app}"""; Flags: runhidden waituntilterminated; RunOnceId: "WindowSeatUninstall"
 
 [Code]
 procedure EndTask(const Name: String);
@@ -75,7 +75,7 @@ end;
 
 function InstallParams: String;
 begin
-  Result := 'install';
+  Result := 'install --dir ' + AddQuotes(ExpandConstant('{app}'));
   if not WizardIsTaskSelected('tray') then
     Result := Result + ' --no-tray';
   if WizardIsTaskSelected('path') then
@@ -90,7 +90,7 @@ begin
   if CurStep <> ssPostInstall then
     Exit;
   if not Exec(ExpandConstant('{app}\windowseat.exe'), InstallParams, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
-    SuppressibleMsgBox('Windowseat was copied but could not be set up (exit code ' + IntToStr(ResultCode) + ').' + #13#10#13#10 +
+    SuppressibleMsgBox('WindowSeat was copied but could not be set up (exit code ' + IntToStr(ResultCode) + ').' + #13#10#13#10 +
       'Run this in a terminal to see why:' + #13#10 + ExpandConstant('"{app}\windowseat.exe" ') + InstallParams,
       mbError, MB_OK, IDOK);
 end;

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const installDir = `C:\Users\k\AppData\Local\Programs\Windowseat`
+const installDir = `C:\Users\k\AppData\Local\Programs\WindowSeat`
 
 func TestPathWithAddsDirOnce(t *testing.T) {
 	cases := []struct{ name, path, want string }{
@@ -42,7 +42,7 @@ func TestPathWithoutRemovesEveryCopyOfDir(t *testing.T) {
 
 func TestWindowsInstallAddsToPathOnlyWhenAsked(t *testing.T) {
 	env := windowsEnv()
-	dir := filepath.Join(env.LocalAppData, "Programs", "Windowseat")
+	dir := filepath.Join(env.LocalAppData, "Programs", "WindowSeat")
 
 	plan, err := InstallPlan(env, Options{AddToPath: true})
 	if err != nil {
@@ -75,10 +75,10 @@ func TestAddToPathIsWindowsOnly(t *testing.T) {
 
 func TestWindowsUninstallRemovesDirFromPath(t *testing.T) {
 	env := windowsEnv()
-	plan, err := UninstallPlan(env)
+	plan, err := UninstallPlan(env, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(env.LocalAppData, "Programs", "Windowseat")
+	dir := filepath.Join(env.LocalAppData, "Programs", "WindowSeat")
 	findStep(t, plan, func(s removeFromUserPath) bool { return s.dir == dir })
 }

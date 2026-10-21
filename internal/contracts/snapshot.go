@@ -77,7 +77,7 @@ type ProviderSnapshot struct {
 	Account      *Account      `json:"account,omitempty"`
 	Plan         string        `json:"plan,omitempty"`
 	// UsageAllowed is the provider's own allow or deny answer, when it gives one.
-	// Windowseat never derives it from meter percentages.
+	// WindowSeat never derives it from meter percentages.
 	UsageAllowed *bool              `json:"usage_allowed,omitempty"`
 	Meters       []Meter            `json:"meters,omitempty"`
 	Issues       []ObservationIssue `json:"issues,omitempty"`

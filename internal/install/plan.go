@@ -1,4 +1,4 @@
-// Package install registers Windowseat to start at login and removes it again.
+// Package install registers WindowSeat to start at login and removes it again.
 //
 // Install and uninstall first build a Plan from an Env. Building a plan
 // touches nothing, so every OS's plan is testable on any machine. Run then
@@ -32,7 +32,8 @@ type Env struct {
 
 type Options struct {
 	NoTray    bool
-	AddToPath bool // Windows only
+	AddToPath bool   // Windows only
+	Dir       string // Windows only: install folder in place of the default
 }
 
 // Plan is the ordered work for one command, plus notes to print at the end.
@@ -48,6 +49,9 @@ func InstallPlan(env Env, opts Options) (Plan, error) {
 	if opts.AddToPath && env.OS != "windows" {
 		return Plan{}, errors.New("--add-to-path is Windows-only")
 	}
+	if err := checkDir(env, opts.Dir); err != nil {
+		return Plan{}, err
+	}
 	switch env.OS {
 	case "linux":
 		return systemdInstall(env, opts), nil
@@ -59,16 +63,38 @@ func InstallPlan(env Env, opts Options) (Plan, error) {
 	return Plan{}, unsupported(env)
 }
 
-func UninstallPlan(env Env) (Plan, error) {
+func UninstallPlan(env Env, opts Options) (Plan, error) {
+	if err := checkDir(env, opts.Dir); err != nil {
+		return Plan{}, err
+	}
 	switch env.OS {
 	case "linux":
 		return systemdUninstall(env), nil
 	case "windows":
-		return schtasksUninstall(env), nil
+		return schtasksUninstall(env, opts), nil
 	case "darwin":
 		return launchdUninstall(env), nil
 	}
 	return Plan{}, unsupported(env)
+}
+
+func checkDir(env Env, dir string) error {
+	switch {
+	case dir == "":
+		return nil
+	case env.OS != "windows":
+		return errors.New("--dir is Windows-only")
+	case !windowsAbs(dir):
+		return fmt.Errorf("--dir needs a full path such as C:\\Tools\\WindowSeat, not %s", dir)
+	}
+	return nil
+}
+
+// windowsAbs reports whether p is a drive or UNC path. Plans for Windows are
+// built and tested on any OS, so filepath.IsAbs cannot decide this.
+func windowsAbs(p string) bool {
+	drive := len(p) >= 3 && p[1] == ':' && (p[2] == '\\' || p[2] == '/')
+	return drive || strings.HasPrefix(p, `\\`)
 }
 
 func unsupported(env Env) error {
@@ -103,7 +129,7 @@ func removeFiles(dir string, names ...string) []Step {
 	return steps
 }
 
-// removeState deletes Windowseat's own state and socket dirs. Both always end
+// removeState deletes WindowSeat's own state and socket dirs. Both always end
 // in a windowseat directory; anything else is left alone.
 func removeState(env Env) []Step {
 	dirs := []string{env.StateDir}

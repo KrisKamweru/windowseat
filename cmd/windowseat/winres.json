@@ -13,10 +13,10 @@
     "#1": {
       "0409": {
         "identity": {
-          "name": "Windowseat.windowseat",
+          "name": "WindowSeat.windowseat",
           "version": "0.1.0.0"
         },
-        "description": "Windowseat quota monitor service and CLI",
+        "description": "WindowSeat quota monitor service and CLI",
         "minimum-os": "win10",
         "execution-level": "as invoker",
         "dpi-awareness": "system",
@@ -34,12 +34,12 @@
         "info": {
           "0409": {
             "CompanyName": "Kris Kamweru",
-            "FileDescription": "Windowseat quota monitor service and CLI",
+            "FileDescription": "WindowSeat quota monitor service and CLI",
             "FileVersion": "0.1.0",
             "InternalName": "windowseat",
             "LegalCopyright": "Copyright (c) 2026 Kris Kamweru",
             "OriginalFilename": "windowseat.exe",
-            "ProductName": "Windowseat",
+            "ProductName": "WindowSeat",
             "ProductVersion": "0.1.0"
           }
         }

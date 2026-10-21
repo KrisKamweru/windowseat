@@ -32,7 +32,7 @@ var (
 	}
 	getHealth = &mcp.Tool{
 		Name:        "get_health",
-		Description: "Return Windowseat service and provider adapter health." + advisory,
+		Description: "Return WindowSeat service and provider adapter health." + advisory,
 	}
 )
 
