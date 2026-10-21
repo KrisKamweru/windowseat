@@ -57,6 +57,8 @@ scripts/build.sh darwin/arm64       # any GOOS/GOARCH pair
 
 Binaries land in `dist/<os>-<arch>/`. The tray on macOS needs CGO, so build it on a Mac.
 
+Run `git config core.hooksPath .githooks` once after cloning. The pre-commit hook blocks commits to `main` and runs `gofmt`, `go vet` and `go test` first.
+
 ## Install
 
 Run `install` from the build output. It copies both binaries into your user's program folder, starts the service and the tray, and sets both to start when you log in. Nothing needs admin rights.

@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then
+	echo "Commits to main are blocked. Create a feature branch instead."
+	exit 1
+fi
+
+command -v go >/dev/null || { echo "go is not on PATH."; exit 1; }
+
+unformatted="$(gofmt -l cmd internal)"
+if [ -n "$unformatted" ]; then
+	echo "Run gofmt -w on:"
+	echo "$unformatted"
+	exit 1
+fi
+
+go vet ./...
+GOOS=windows go vet ./...
+go test ./...
